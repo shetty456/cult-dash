@@ -15,15 +15,29 @@ export type Channel =
 
 export type MetricStatus = 'green' | 'yellow' | 'red';
 
+// How to reformat a metric value after range-scaling
+export type MetricFormat = 'K' | 'K1' | '₹' | '₹/mo' | '₹Cr';
+
 export interface MetricValue {
   value: number;
   formatted: string;
+  formatType: MetricFormat; // drives reformatting in scaleMetric
   wowChange: number | null;
   momChange: number | null;
   sparkline: number[]; // 7 data points for inline SVG sparkline
   status: MetricStatus;
   subtext?: string;    // e.g. "Target ₹750 | Above"
   progress?: number;   // 0–100 for progress bar (Revenue MTD)
+}
+
+function applyFormat(value: number, fmt: MetricFormat): string {
+  switch (fmt) {
+    case 'K':    return `${Math.round(value / 1000)}K`;
+    case 'K1':   return `${(value / 1000).toFixed(1)}K`;
+    case '₹':    return `₹${Math.round(value).toLocaleString('en-IN')}`;
+    case '₹/mo': return `₹${Math.round(value)}/mo`;
+    case '₹Cr':  return `₹${value.toFixed(1)}Cr`;
+  }
 }
 
 export interface MetricSet {
@@ -152,6 +166,7 @@ const BASE_METRICS: MetricSet = {
   wau: {
     value: 180000,
     formatted: '180K',
+    formatType: 'K',
     wowChange: 2.1,
     momChange: 8.1,
     sparkline: [162, 165, 170, 168, 174, 178, 180],
@@ -160,6 +175,7 @@ const BASE_METRICS: MetricSet = {
   nsm: {
     value: 15300,
     formatted: '15.3K',
+    formatType: 'K1',
     wowChange: 2.3,
     momChange: 5.4,
     sparkline: [13.8, 14.1, 14.5, 14.7, 14.9, 15.1, 15.3],
@@ -169,6 +185,7 @@ const BASE_METRICS: MetricSet = {
   blendedCac: {
     value: 820,
     formatted: '₹820',
+    formatType: '₹',
     wowChange: null,
     momChange: 1.2,
     sparkline: [890, 870, 855, 840, 835, 828, 820],
@@ -178,6 +195,7 @@ const BASE_METRICS: MetricSet = {
   arpu: {
     value: 385,
     formatted: '₹385/mo',
+    formatType: '₹/mo',
     wowChange: null,
     momChange: 1.8,
     sparkline: [378, 379, 380, 381, 382, 384, 385],
@@ -186,6 +204,7 @@ const BASE_METRICS: MetricSet = {
   revenueMtd: {
     value: 18.2,
     formatted: '₹18.2Cr',
+    formatType: '₹Cr',
     wowChange: 4.7,
     momChange: 11.2,
     sparkline: [15.1, 15.8, 16.4, 16.9, 17.4, 17.9, 18.2],
@@ -509,10 +528,26 @@ export const NSM_BY_PAYMENT = [
 
 function scaleMetric(m: MetricValue, multiplier: number): MetricValue {
   const scaledValue = m.value * multiplier;
+  const scaledFormatted = applyFormat(scaledValue, m.formatType);
+
+  // For Revenue MTD, recompute the progress subtext against the same target
+  let subtext = m.subtext;
+  let progress = m.progress;
+  if (m.formatType === '₹Cr' && m.progress !== undefined) {
+    // Back-calculate target from base (18.2 / 0.78 ≈ 23.3 Cr)
+    const baseTarget = m.value / (m.progress / 100);
+    const scaledProgress = Math.round((scaledValue / baseTarget) * 100);
+    progress = scaledProgress;
+    subtext = `${scaledProgress}% of ₹${baseTarget.toFixed(1)}Cr target`;
+  }
+
   return {
     ...m,
     value: scaledValue,
+    formatted: scaledFormatted,
     sparkline: m.sparkline.map(v => v * multiplier),
+    subtext,
+    progress,
   };
 }
 
