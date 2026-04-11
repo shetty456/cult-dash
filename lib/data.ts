@@ -61,7 +61,91 @@ export interface DashboardData {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Base data (30d / All Channels)
+// Phase 2 Types — Channel Performance + Segmentation
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ChannelRow {
+  name: string;
+  installs: number;
+  installsWoW: number;
+  trialConv: number;   // % sign-up → trial
+  paidConv: number;    // % trial → paid
+  cac: number;
+  cacMoM: number;
+  timeToVisit: number; // avg days install → first visit
+  nsm: number;         // % of users achieving NSM
+  status: 'healthy' | 'watch' | 'alert';
+  alert: string | null;
+}
+
+export interface AgeBand {
+  band: string;
+  users: number;
+  usersWoW: number;
+  d7Retention: number;
+  d30Retention: number;
+  d60Retention: number;
+  nsm: number;
+  churnRate: number;
+}
+
+export interface PaymentSegment {
+  type: string;
+  users: number;
+  usersWoW: number;
+  d7Retention: number;
+  d30Retention: number;
+  d60Retention: number;
+  nsm: number;
+  arpu: number;
+  ltvCacRatio: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Types — Retention Curves + NSM Milestones
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RetentionPoint {
+  day: number;
+  retention: number;
+  users?: number;
+}
+
+export interface RetentionCurves {
+  blended: RetentionPoint[];
+  byChannel: Record<string, RetentionPoint[]>;
+}
+
+export interface NSMMilestone {
+  name: string;
+  count: number;
+  percent: number;
+}
+
+export interface NSMWeekCohort {
+  week: string;
+  cohortSize: number;
+  firstVisit: number;
+  secondVisit: number;
+  thirdVisit: number;
+  nsmCompletion: number;
+  nsmPercent: number;
+  trend: number; // WoW change in NSM %
+}
+
+export interface NSMMilestones {
+  currentWeek: {
+    week: string;
+    cohortSize: number;
+    milestones: NSMMilestone[];
+    bottleneck: string;
+    bottleneckPercent: number;
+  };
+  historicalCohorts: NSMWeekCohort[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1: Base data (30d / All Channels)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BASE_METRICS: MetricSet = {
@@ -238,7 +322,189 @@ const CHANNEL_FUNNELS: Partial<Record<Channel, FunnelStage[]>> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Merge helpers
+// Phase 2: Channel Performance Table Data
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const CHANNEL_TABLE_DATA: ChannelRow[] = [
+  {
+    name: 'Referrals',
+    installs: 45000,
+    installsWoW: 2.3,
+    trialConv: 68,
+    paidConv: 52,
+    cac: 680,
+    cacMoM: -1.2,
+    timeToVisit: 2.1,
+    nsm: 10.2,
+    status: 'healthy',
+    alert: null,
+  },
+  {
+    name: 'Organic Search',
+    installs: 22000,
+    installsWoW: 0.8,
+    trialConv: 63,
+    paidConv: 48,
+    cac: 720,
+    cacMoM: 1.8,
+    timeToVisit: 2.4,
+    nsm: 8.1,
+    status: 'watch',
+    alert: null,
+  },
+  {
+    name: 'Paid Digital',
+    installs: 18000,
+    installsWoW: -2.1,
+    trialConv: 52,
+    paidConv: 42,
+    cac: 1120,
+    cacMoM: 18.0,
+    timeToVisit: 3.2,
+    nsm: 7.3,
+    status: 'alert',
+    alert: 'CAC up 18% MoM',
+  },
+  {
+    name: 'Brand/ATL',
+    installs: 10000,
+    installsWoW: 1.5,
+    trialConv: 58,
+    paidConv: 45,
+    cac: 950,
+    cacMoM: 2.1,
+    timeToVisit: 2.8,
+    nsm: 7.8,
+    status: 'watch',
+    alert: null,
+  },
+  {
+    name: 'Corporate B2B',
+    installs: 5000,
+    installsWoW: 4.2,
+    trialConv: 72,
+    paidConv: 68,
+    cac: 480,
+    cacMoM: -0.5,
+    timeToVisit: 1.8,
+    nsm: 15.1,
+    status: 'healthy',
+    alert: null,
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2: Segmentation Data
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const AGE_SEGMENTS: AgeBand[] = [
+  { band: '18–25', users: 50400, usersWoW: 1.9, d7Retention: 38, d30Retention: 32, d60Retention: 28, nsm: 22, churnRate: 8.5 },
+  { band: '26–35', users: 75600, usersWoW: 2.4, d7Retention: 45, d30Retention: 41, d60Retention: 36, nsm: 31, churnRate: 5.2 },
+  { band: '36–45', users: 39600, usersWoW: 2.1, d7Retention: 48, d30Retention: 44, d60Retention: 38, nsm: 35, churnRate: 4.8 },
+  { band: '46+',   users: 14400, usersWoW: 1.8, d7Retention: 42, d30Retention: 38, d60Retention: 33, nsm: 28, churnRate: 6.2 },
+];
+
+export const PAYMENT_SEGMENTS: PaymentSegment[] = [
+  { type: 'Self-Pay',  users: 153000, usersWoW: 2.1, d7Retention: 40, d30Retention: 37, d60Retention: 31, nsm: 8,  arpu: 350, ltvCacRatio: 5.5 },
+  { type: 'Corporate', users: 27000,  usersWoW: 3.2, d7Retention: 56, d30Retention: 52, d60Retention: 48, nsm: 42, arpu: 480, ltvCacRatio: 18  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3: Retention Curves
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const RETENTION_CURVES: RetentionCurves = {
+  blended: [
+    { day: 1,  retention: 68, users: 180000 },
+    { day: 7,  retention: 42, users: 75600  },
+    { day: 14, retention: 40, users: 72000  },
+    { day: 30, retention: 39, users: 70200  },
+    { day: 60, retention: 34, users: 61200  },
+  ],
+  byChannel: {
+    Referrals: [
+      { day: 1,  retention: 72 },
+      { day: 7,  retention: 46 },
+      { day: 14, retention: 44 },
+      { day: 30, retention: 43 },
+      { day: 60, retention: 38 },
+    ],
+    'Organic Search': [
+      { day: 1,  retention: 68 },
+      { day: 7,  retention: 40 },
+      { day: 14, retention: 38 },
+      { day: 30, retention: 37 },
+      { day: 60, retention: 32 },
+    ],
+    'Paid Digital': [
+      { day: 1,  retention: 62 },
+      { day: 7,  retention: 35 },
+      { day: 14, retention: 32 },
+      { day: 30, retention: 31 },
+      { day: 60, retention: 26 },
+    ],
+    'Brand/ATL': [
+      { day: 1,  retention: 65 },
+      { day: 7,  retention: 40 },
+      { day: 14, retention: 38 },
+      { day: 30, retention: 37 },
+      { day: 60, retention: 32 },
+    ],
+    Corporate: [
+      { day: 1,  retention: 78 },
+      { day: 7,  retention: 56 },
+      { day: 14, retention: 54 },
+      { day: 30, retention: 52 },
+      { day: 60, retention: 48 },
+    ],
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3: NSM Milestones
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const NSM_MILESTONES: NSMMilestones = {
+  currentWeek: {
+    week: 'Apr 1–7',
+    cohortSize: 1245,
+    milestones: [
+      { name: '1st Visit',          count: 1245, percent: 100  },
+      { name: '2nd Visit (D7)',      count: 987,  percent: 79.3 },
+      { name: '3rd Visit (D7)',      count: 764,  percent: 61.4 },
+      { name: '3rd Confirmed',       count: 682,  percent: 54.8 },
+      { name: '4-Week 3×/Wk (NSM)', count: 156,  percent: 12.5 },
+    ],
+    bottleneck: '3rd visit → 4-week consistency',
+    bottleneckPercent: 77,
+  },
+  historicalCohorts: [
+    { week: 'Mar 25–31',   cohortSize: 1235, firstVisit: 1235, secondVisit: 975,  thirdVisit: 766, nsmCompletion: 160, nsmPercent: 13.0, trend:  1.2 },
+    { week: 'Apr 1–7',     cohortSize: 1245, firstVisit: 1245, secondVisit: 987,  thirdVisit: 764, nsmCompletion: 156, nsmPercent: 12.5, trend: -0.5 },
+    { week: 'Apr 8–14',    cohortSize: 1198, firstVisit: 1198, secondVisit: 969,  thirdVisit: 755, nsmCompletion: 164, nsmPercent: 13.7, trend:  1.2 },
+    { week: 'Apr 15–21',   cohortSize: 1220, firstVisit: 1220, secondVisit: 996,  thirdVisit: 781, nsmCompletion: 172, nsmPercent: 14.1, trend:  0.4 },
+    { week: 'Apr 22–28',   cohortSize: 1187, firstVisit: 1187, secondVisit: 950,  thirdVisit: 738, nsmCompletion: 145, nsmPercent: 12.2, trend: -1.9 },
+    { week: 'Apr 29–May 5',cohortSize: 1256, firstVisit: 1256, secondVisit: 1005, thirdVisit: 784, nsmCompletion: 168, nsmPercent: 13.4, trend:  1.2 },
+    { week: 'May 6–12',    cohortSize: 1210, firstVisit: 1210, secondVisit: 968,  thirdVisit: 754, nsmCompletion: 171, nsmPercent: 14.1, trend:  0.7 },
+    { week: 'May 13–19',   cohortSize: 1273, firstVisit: 1273, secondVisit: 1019, thirdVisit: 792, nsmCompletion: 185, nsmPercent: 14.5, trend:  0.4 },
+  ],
+};
+
+// NSM by segment
+export const NSM_BY_AGE = [
+  { band: '18–25', firstVisit: 100, secondVisit: 72, thirdVisit: 54, fourWkNsm: 8.8,  nsmPct: 22, trend:  1.1 },
+  { band: '26–35', firstVisit: 100, secondVisit: 82, thirdVisit: 68, fourWkNsm: 15.8, nsmPct: 31, trend:  0.8 },
+  { band: '36–45', firstVisit: 100, secondVisit: 85, thirdVisit: 71, fourWkNsm: 18.9, nsmPct: 35, trend:  1.3 },
+  { band: '46+',   firstVisit: 100, secondVisit: 78, thirdVisit: 62, fourWkNsm: 12.2, nsmPct: 28, trend:  0.5 },
+];
+
+export const NSM_BY_PAYMENT = [
+  { type: 'Self-Pay',  firstVisit: 100, secondVisit: 76, thirdVisit: 58, fourWkNsm: 6.2,  nsmPct: 8,  trend: -0.3 },
+  { type: 'Corporate', firstVisit: 100, secondVisit: 89, thirdVisit: 82, fourWkNsm: 27.5, nsmPct: 42, trend:  2.1 },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 merge helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 function scaleMetric(m: MetricValue, multiplier: number): MetricValue {
@@ -262,14 +528,13 @@ function scaleFunnel(stages: FunnelStage[], multiplier: number): FunnelStage[] {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main data accessor
+// Main Phase 1 data accessor
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function getDashboardData(range: DateRange, channel: Channel): DashboardData {
   const multiplier = RANGE_MULTIPLIERS[range];
   const channelOverride = CHANNEL_OVERRIDES[channel];
 
-  // Scale base metrics by date range
   const scaledMetrics: MetricSet = {
     wau:        scaleMetric(BASE_METRICS.wau,        multiplier),
     nsm:        scaleMetric(BASE_METRICS.nsm,        multiplier),
@@ -278,7 +543,6 @@ export function getDashboardData(range: DateRange, channel: Channel): DashboardD
     revenueMtd: scaleMetric(BASE_METRICS.revenueMtd, multiplier),
   };
 
-  // Apply channel overrides (override ignores range scaling for realism)
   const metrics: MetricSet = channelOverride ? {
     wau:        channelOverride.wau        ? mergeMetric(scaledMetrics.wau,        channelOverride.wau)        : scaledMetrics.wau,
     nsm:        channelOverride.nsm        ? mergeMetric(scaledMetrics.nsm,        channelOverride.nsm)        : scaledMetrics.nsm,
@@ -287,19 +551,12 @@ export function getDashboardData(range: DateRange, channel: Channel): DashboardD
     revenueMtd: channelOverride.revenueMtd ? mergeMetric(scaledMetrics.revenueMtd, channelOverride.revenueMtd) : scaledMetrics.revenueMtd,
   } : scaledMetrics;
 
-  // Pick funnel — channel-specific or scaled base
   const rawFunnel = CHANNEL_FUNNELS[channel] ?? BASE_FUNNEL;
   const funnel = scaleFunnel(rawFunnel, channel === 'All Channels' ? multiplier : 1);
 
-  // Filter alerts to those relevant for the selected channel
   const alerts = ALL_ALERTS.filter(a => a.channels.includes(channel));
 
-  return {
-    metrics,
-    funnel,
-    alerts,
-    asOf: '2026-04-11T14:47:00Z',
-  };
+  return { metrics, funnel, alerts, asOf: '2026-04-11T14:47:00Z' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -314,7 +571,7 @@ export function buildSparklinePath(data: number[], width = 80, height = 32): str
   return data
     .map((v, i) => {
       const x = (i / (data.length - 1)) * width;
-      const y = height - ((v - min) / range) * (height - 4) - 2; // 2px padding
+      const y = height - ((v - min) / range) * (height - 4) - 2;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
