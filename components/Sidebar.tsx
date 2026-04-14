@@ -49,14 +49,22 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
   return (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-[#222] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#10b981] flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-black text-black">c</span>
+      <div className="px-4 py-5 border-b border-[#1e1e1e] flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          {/* Icon mark */}
+          <div className="relative w-8 h-8 flex-shrink-0">
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#10b981] to-[#059669] shadow-lg shadow-[#10b981]/20" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 12 L8 4 L13 12" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M5.5 9h5" stroke="black" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
           </div>
-          <div>
-            <span className="text-sm font-bold text-white tracking-tight">cult</span>
-            <span className="block text-[10px] font-semibold text-[#10b981] uppercase tracking-widest -mt-0.5">Growth</span>
+          {/* Wordmark */}
+          <div className="flex flex-col leading-none">
+            <span className="text-[15px] font-black text-white tracking-[-0.03em]">cult<span className="text-[#10b981]">.</span>fit</span>
+            <span className="text-[9px] font-semibold text-[#10b981]/70 uppercase tracking-[0.15em] mt-0.5">Growth</span>
           </div>
         </div>
         <button onClick={onClose} aria-label="Close menu" className="lg:hidden text-[#6b7280] hover:text-white transition-colors p-1 -mr-1">
