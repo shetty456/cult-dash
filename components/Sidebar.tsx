@@ -24,16 +24,6 @@ const NAV_ITEMS = [
   },
 ];
 
-const MORE_ITEMS = [
-  {
-    href: '/reports', label: 'Reports',
-    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4 7h6M4 9.5h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M4.5 1v2M9.5 1v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
-  },
-  {
-    href: '/settings', label: 'Settings',
-    icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
-  },
-];
 
 function NavLink({ href, label, icon, exact = false, onClick }: {
   href: string; label: string; icon: React.ReactNode; exact?: boolean; onClick?: () => void;
@@ -82,12 +72,6 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
         {NAV_ITEMS.map(item => (
           <NavLink key={item.href} {...item} exact onClick={onClose} />
         ))}
-        <div className="mt-4 pt-4 border-t border-[#222]">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#3a3a3a] px-3 mb-3">Tools</p>
-          {MORE_ITEMS.map(item => (
-            <NavLink key={item.href} {...item} onClick={onClose} />
-          ))}
-        </div>
       </nav>
 
       {/* Footer */}

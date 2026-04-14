@@ -11,8 +11,6 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   '/':         { title: 'Growth Overview',  sub: 'Key metrics, funnel health, and live activity at a glance' },
   '/events':   { title: 'Event Stream',     sub: 'Real-time feed of all user actions — Mixpanel-style' },
   '/users':    { title: 'User Explorer',    sub: 'Browse, search, and drill into individual user journeys' },
-  '/reports':  { title: 'Reports',          sub: 'Ad-hoc queries grouped by any dimension' },
-  '/settings': { title: 'Settings',         sub: 'Date window, data model, and database stats' },
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
