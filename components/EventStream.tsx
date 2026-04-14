@@ -21,18 +21,18 @@ interface ApiEvent {
 
 const ANCHOR_TS = new Date('2026-04-11T14:47:00Z').getTime();
 
-const EVENT_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  app_open:               { label: 'App Open',     color: '#6b7280', bg: '#25252544' },
-  page_view:              { label: 'Page View',    color: '#818cf8', bg: '#1a1a2e44' },
-  workout_started:        { label: 'Workout Start',color: '#f59e0b', bg: '#451a0344' },
-  workout_completed:      { label: 'Workout Done', color: '#10b981', bg: '#064e3b44' },
-  trial_booked:           { label: 'Trial Booked', color: '#60a5fa', bg: '#1e3a5f44' },
-  trial_completed:        { label: 'Trial Done',   color: '#34d399', bg: '#1e3a5f44' },
-  subscription_purchased: { label: 'Subscribed',   color: '#4ade80', bg: '#14532d44' },
-  subscription_cancelled: { label: 'Cancelled',    color: '#ef4444', bg: '#450a0a44' },
-  referral_sent:          { label: 'Referral',     color: '#a78bfa', bg: '#2e106544' },
-  class_booked:           { label: 'Class Booked', color: '#34d399', bg: '#064e3b44' },
-  meal_logged:            { label: 'Meal Logged',  color: '#fb923c', bg: '#43140744' },
+const EVENT_CFG: Record<string, { label: string; color: string }> = {
+  app_open:               { label: 'App Open',      color: '#6b7280' },
+  page_view:              { label: 'Page View',      color: '#818cf8' },
+  workout_started:        { label: 'Workout Start',  color: '#f59e0b' },
+  workout_completed:      { label: 'Workout Done',   color: '#10b981' },
+  trial_booked:           { label: 'Trial Booked',   color: '#60a5fa' },
+  trial_completed:        { label: 'Trial Done',     color: '#34d399' },
+  subscription_purchased: { label: 'Subscribed',     color: '#4ade80' },
+  subscription_cancelled: { label: 'Cancelled',      color: '#ef4444' },
+  referral_sent:          { label: 'Referral',       color: '#a78bfa' },
+  class_booked:           { label: 'Class Booked',   color: '#34d399' },
+  meal_logged:            { label: 'Meal Logged',    color: '#fb923c' },
 };
 
 function relTime(isoTs: string): string {
@@ -46,91 +46,80 @@ function relTime(isoTs: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function PropChips({ props }: { props: Record<string, unknown> }) {
-  const entries = Object.entries(props).filter(([, v]) => v !== null && v !== undefined && v !== '');
-  if (entries.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-1 mt-1.5">
-      {entries.slice(0, 6).map(([k, v]) => (
-        <span
-          key={k}
-          className="inline-flex items-center text-[9px] bg-[#252525] border border-[#2a2a2a] rounded px-1.5 py-0.5 font-mono"
-        >
-          <span className="text-[#4b5563]">{k}:</span>
-          <span className="text-[#9ca3af] ml-0.5">{String(v)}</span>
-        </span>
-      ))}
-      {entries.length > 6 && (
-        <span className="text-[9px] text-[#3a3a3a] px-1">+{entries.length - 6} more</span>
-      )}
-    </div>
-  );
-}
-
 function EventRow({ event, onUserClick }: { event: ApiEvent; onUserClick?: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
-  const cfg = EVENT_CFG[event.type] ?? { label: event.type, color: '#6b7280', bg: '#25252544' };
-  const hasProps = Object.keys(event.properties).length > 0;
+  const cfg = EVENT_CFG[event.type] ?? { label: event.type, color: '#6b7280' };
+
+  const details = [
+    event.device_type && event.os && `${event.device_type} · ${event.os}`,
+    event.utm_source && event.utm_source !== 'organic' && `${event.utm_source}${event.utm_medium ? ` / ${event.utm_medium}` : ''}`,
+    event.utm_campaign && `Campaign: ${event.utm_campaign}`,
+    event.user_city && `City: ${event.user_city}`,
+    event.session_number > 0 && `Session #${event.session_number}`,
+  ].filter(Boolean) as string[];
+
+  const propEntries = Object.entries(event.properties).filter(([, v]) => v != null && v !== '');
 
   return (
     <div
-      className="border-b border-[#1a1a1a] hover:bg-[#1a1a1a] transition-colors duration-100 px-3 py-2.5"
+      className="group border-b border-[#1a1a1a] last:border-0 hover:bg-[#1a1a1a] transition-colors duration-100 cursor-pointer"
+      onClick={() => setExpanded(e => !e)}
     >
-      {/* Row 1: badge + user + time */}
-      <div className="flex items-center gap-2 min-w-0">
-        <span
-          className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded flex-shrink-0 border"
-          style={{ color: cfg.color, background: cfg.bg, borderColor: `${cfg.color}33` }}
-        >
-          {cfg.label}
-        </span>
+      {/* Main row */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Color dot */}
+        <span className="w-2 h-2 rounded-full flex-shrink-0 mt-px" style={{ background: cfg.color }} />
 
-        <button
-          onClick={() => onUserClick?.(event.user_id)}
-          className="text-xs font-semibold text-white hover:text-[#10b981] transition-colors truncate text-left"
-        >
-          {event.user_name}
-        </button>
-        <span className="text-[10px] text-[#3a3a3a] flex-shrink-0">·</span>
-        <span className="text-[10px] text-[#4b5563] truncate flex-shrink-0">{event.user_city}</span>
-
-        <div className="flex-1" />
-        <span className="text-[10px] text-[#3a3a3a] tabular-nums flex-shrink-0">{relTime(event.timestamp)}</span>
-        {hasProps && (
-          <button onClick={() => setExpanded(e => !e)} className="text-[#3a3a3a] hover:text-[#6b7280] text-[10px] flex-shrink-0 ml-1">
-            {expanded ? '▲' : '▼'}
-          </button>
-        )}
-      </div>
-
-      {/* Row 2: property chips */}
-      {!expanded && <PropChips props={event.properties} />}
-
-      {/* Row 3: UTM + device tags */}
-      <div className="flex flex-wrap gap-1 mt-1.5">
-        {event.device_type && (
-          <span className="text-[9px] text-[#4b5563] bg-[#1e1e1e] border border-[#252525] px-1.5 py-0.5 rounded font-mono">
-            {event.device_type} · {event.os}
+        {/* Event + user */}
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] font-semibold" style={{ color: cfg.color }}>
+            {cfg.label}
           </span>
-        )}
-        {event.utm_source && event.utm_source !== 'organic' && (
-          <>
-            <span className="text-[9px] text-[#4b5563] bg-[#1e1e1e] border border-[#252525] px-1.5 py-0.5 rounded font-mono">{event.utm_source}</span>
-            {event.utm_medium && <span className="text-[9px] text-[#4b5563] bg-[#1e1e1e] border border-[#252525] px-1.5 py-0.5 rounded font-mono">{event.utm_medium}</span>}
-            {event.utm_campaign && <span className="text-[9px] text-[#4b5563] bg-[#1e1e1e] border border-[#252525] px-1.5 py-0.5 rounded font-mono">{event.utm_campaign}</span>}
-          </>
-        )}
-        {event.session_number > 0 && (
-          <span className="text-[9px] text-[#3a3a3a] bg-[#1a1a1a] px-1.5 py-0.5 rounded font-mono">session #{event.session_number}</span>
+          <span className="text-[12px] text-[#4b5563] mx-1.5">·</span>
+          <button
+            onClick={e => { e.stopPropagation(); onUserClick?.(event.user_id); }}
+            className="text-[12px] text-[#9ca3af] hover:text-white transition-colors"
+          >
+            {event.user_name}
+          </button>
+        </div>
+
+        {/* Time */}
+        <span className="text-[11px] text-[#3a3a3a] tabular-nums flex-shrink-0">{relTime(event.timestamp)}</span>
+
+        {/* Expand chevron */}
+        {(details.length > 0 || propEntries.length > 0) && (
+          <svg
+            width="12" height="12" viewBox="0 0 12 12" fill="none"
+            className={`flex-shrink-0 text-[#3a3a3a] group-hover:text-[#6b7280] transition-all duration-150 ${expanded ? 'rotate-180' : ''}`}
+          >
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         )}
       </div>
 
-      {/* Expanded JSON */}
-      {expanded && hasProps && (
-        <div className="mt-2 bg-[#111] rounded-lg px-3 py-2 font-mono">
-          <pre className="text-[10px] text-[#9ca3af] whitespace-pre-wrap overflow-auto max-h-40">
-            {JSON.stringify(event.properties, null, 2)}
-          </pre>
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="px-9 pb-3 space-y-2">
+          {details.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {details.map(d => (
+                <span key={d} className="text-[10px] text-[#6b7280] bg-[#252525] px-2 py-1 rounded font-mono">
+                  {d}
+                </span>
+              ))}
+            </div>
+          )}
+          {propEntries.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {propEntries.slice(0, 8).map(([k, v]) => (
+                <span key={k} className="text-[10px] bg-[#1e1e1e] border border-[#2a2a2a] px-2 py-1 rounded font-mono">
+                  <span className="text-[#4b5563]">{k}:</span>
+                  <span className="text-[#9ca3af] ml-1">{String(v)}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -138,7 +127,7 @@ function EventRow({ event, onUserClick }: { event: ApiEvent; onUserClick?: (id: 
 }
 
 const FILTER_OPTIONS = [
-  { value: '', label: 'All Events' },
+  { value: '', label: 'All events' },
   { value: 'workout_completed',      label: 'Workout Done' },
   { value: 'workout_started',        label: 'Workout Start' },
   { value: 'subscription_purchased', label: 'Subscribed' },
@@ -157,13 +146,15 @@ interface EventStreamProps {
   limit?: number;
   showFilter?: boolean;
   onUserClick?: (userId: string) => void;
-  compact?: boolean; // condensed mode for overview widget
+  compact?: boolean;
 }
 
-export default function EventStream({ filters = {}, limit = 50, showFilter = true, onUserClick, compact = false }: EventStreamProps) {
-  const [events, setEvents]     = useState<ApiEvent[]>([]);
-  const [total, setTotal]       = useState(0);
-  const [loading, setLoading]   = useState(true);
+export default function EventStream({
+  filters = {}, limit = 50, showFilter = true, onUserClick, compact = false,
+}: EventStreamProps) {
+  const [events, setEvents]         = useState<ApiEvent[]>([]);
+  const [total, setTotal]           = useState(0);
+  const [loading, setLoading]       = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
 
   const filterKey = JSON.stringify(filters);
@@ -175,11 +166,7 @@ export default function EventStream({ filters = {}, limit = 50, showFilter = tru
     if (typeFilter) qs.set('type', typeFilter);
     fetch(`/api/events?${qs}`)
       .then(r => r.json())
-      .then(d => {
-        setEvents(d.events ?? []);
-        setTotal(d.total ?? 0);
-        setLoading(false);
-      });
+      .then(d => { setEvents(d.events ?? []); setTotal(d.total ?? 0); setLoading(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey, typeFilter, limit]);
 
@@ -188,18 +175,15 @@ export default function EventStream({ filters = {}, limit = 50, showFilter = tru
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className={`flex items-center justify-between flex-shrink-0 gap-2 ${compact ? 'mb-2' : 'mb-3'}`}>
-        <div className="min-w-0">
-          <p className="text-xs font-bold text-white uppercase tracking-wider">Live Event Stream</p>
-          <p className="text-[10px] text-[#4b5563] mt-0.5">
-            {loading ? 'Loading…' : `${total.toLocaleString()} total · showing ${events.length}`}
-          </p>
-        </div>
+      <div className={`flex items-center justify-between flex-shrink-0 gap-3 ${compact ? 'mb-2' : 'mb-4'}`}>
+        <p className="text-[11px] text-[#4b5563]">
+          {loading ? 'Loading…' : `${total.toLocaleString()} events · showing ${events.length}`}
+        </p>
         {showFilter && (
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            className="text-[10px] bg-[#2a2a2a] border border-[#3a3a3a] text-[#9ca3af] rounded-lg px-2 py-1.5 focus:outline-none"
+            className="text-[11px] bg-[#1e1e1e] border border-[#2a2a2a] text-[#9ca3af] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#3a3a3a] transition-colors"
           >
             {FILTER_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -208,19 +192,20 @@ export default function EventStream({ filters = {}, limit = 50, showFilter = tru
         )}
       </div>
 
-      {/* Event rows */}
-      <div className="overflow-y-auto flex-1">
+      {/* Feed */}
+      <div className="overflow-y-auto flex-1 bg-[#161616] border border-[#1e1e1e] rounded-xl">
         {loading ? (
-          <div className="space-y-px">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="px-3 py-3 border-b border-[#1a1a1a]">
-                <div className="h-4 bg-[#1e1e1e] rounded animate-pulse mb-2 w-3/4" />
-                <div className="h-3 bg-[#1a1a1a] rounded animate-pulse w-1/2" />
+          <div className="divide-y divide-[#1a1a1a]">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-[#252525] flex-shrink-0" />
+                <div className="flex-1 h-3 bg-[#1e1e1e] rounded animate-pulse" />
+                <div className="w-10 h-3 bg-[#1a1a1a] rounded animate-pulse" />
               </div>
             ))}
           </div>
         ) : events.length === 0 ? (
-          <div className="text-center py-12 text-[#4b5563] text-sm">No events match this filter</div>
+          <div className="text-center py-16 text-[#3a3a3a] text-sm">No events match this filter</div>
         ) : (
           events.map(e => (
             <EventRow key={e.id} event={e} onUserClick={onUserClick} />
