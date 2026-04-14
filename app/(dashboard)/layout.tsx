@@ -9,7 +9,7 @@ import UserProfile from '@/components/UserProfile';
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   '/':         { title: 'Growth Overview',  sub: 'Key metrics, funnel health, and live activity at a glance' },
-  '/events':   { title: 'Event Stream',     sub: 'Real-time feed of all user actions — Mixpanel-style' },
+  '/events':   { title: 'Events',            sub: 'Volume, trends, and breakdown by event type' },
   '/users':    { title: 'User Explorer',    sub: 'Browse, search, and drill into individual user journeys' },
 };
 

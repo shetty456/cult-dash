@@ -96,7 +96,7 @@ function Analytics({ data }: { data: EventStats }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Event list — bar IS the story, count confirms it, trend signals direction */}
+      {/* Event list — bar IS the story */}
       <div className="bg-[#161616] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
         {byType.map(row => {
           const cfg = EVENT_CFG[row.type] ?? { label: row.type, color: '#6b7280' };
@@ -105,29 +105,28 @@ function Analytics({ data }: { data: EventStats }) {
           const noChange = Math.abs(row.trend) < 1;
 
           return (
-            <div key={row.type} className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors duration-100">
+            <div key={row.type} className="flex items-center gap-4 px-4 py-2.5 hover:bg-[#1c1c1c] transition-colors duration-100">
 
-              {/* Dot + name */}
-              <div className="flex items-center gap-2 w-36 flex-shrink-0">
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cfg.color }} />
-                <span className="text-[13px] font-medium text-white truncate">{cfg.label}</span>
-              </div>
+              {/* Name — fixed width, no dot needed, color on the bar is the identifier */}
+              <span className="text-[13px] font-medium text-[#d1d5db] w-32 flex-shrink-0 truncate">
+                {cfg.label}
+              </span>
 
-              {/* Volume bar — the visual anchor */}
-              <div className="flex-1 h-1.5 bg-[#252525] rounded-full overflow-hidden">
+              {/* Bar — dominant, tall, unmissable */}
+              <div className="flex-1 h-5 bg-[#1e1e1e] rounded overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${barPct}%`, background: cfg.color, opacity: 0.65 }}
+                  className="h-full rounded transition-all duration-500 flex items-center"
+                  style={{ width: `${barPct}%`, background: cfg.color, opacity: 0.8 }}
                 />
               </div>
 
-              {/* Count */}
-              <span className="text-[13px] font-semibold text-white tabular-nums w-14 text-right flex-shrink-0">
+              {/* Count — right of bar */}
+              <span className="text-[13px] font-semibold text-white tabular-nums w-16 text-right flex-shrink-0">
                 {fmt(row.count)}
               </span>
 
-              {/* Trend — subtle, right-most */}
-              <span className={`text-[11px] font-medium w-12 text-right flex-shrink-0 tabular-nums ${
+              {/* WoW trend */}
+              <span className={`text-[11px] font-semibold w-12 text-right flex-shrink-0 tabular-nums ${
                 noChange ? 'text-[#3a3a3a]' : up ? 'text-[#10b981]' : 'text-[#ef4444]'
               }`}>
                 {noChange ? '—' : `${up ? '+' : ''}${row.trend.toFixed(0)}%`}
@@ -138,8 +137,7 @@ function Analytics({ data }: { data: EventStats }) {
         })}
       </div>
 
-      {/* Legend hint */}
-      <p className="text-[10px] text-[#3a3a3a] text-right">% = week-over-week change</p>
+      <p className="text-[10px] text-[#2a2a2a] text-right">% change vs previous 7 days</p>
 
     </div>
   );
