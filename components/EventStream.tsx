@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GlobalFilters } from '@/lib/queryHelpers';
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
 interface ApiEvent {
   id: string;
   user_id: string;
@@ -13,205 +15,350 @@ interface ApiEvent {
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
+  utm_content: string;
   device_type: string;
   os: string;
+  session_id: string;
   session_number: number;
+  city: string;
   properties: Record<string, unknown>;
 }
 
-const ANCHOR_TS = new Date('2026-04-11T14:47:00Z').getTime();
+// ── Event config ─────────────────────────────────────────────────────────────
 
-const EVENT_CFG: Record<string, { label: string; color: string }> = {
-  app_open:               { label: 'App Open',      color: '#6b7280' },
-  page_view:              { label: 'Page View',      color: '#818cf8' },
-  workout_started:        { label: 'Workout Start',  color: '#f59e0b' },
-  workout_completed:      { label: 'Workout Done',   color: '#10b981' },
-  trial_booked:           { label: 'Trial Booked',   color: '#60a5fa' },
-  trial_completed:        { label: 'Trial Done',     color: '#34d399' },
-  subscription_purchased: { label: 'Subscribed',     color: '#4ade80' },
-  subscription_cancelled: { label: 'Cancelled',      color: '#ef4444' },
-  referral_sent:          { label: 'Referral',       color: '#a78bfa' },
-  class_booked:           { label: 'Class Booked',   color: '#34d399' },
-  meal_logged:            { label: 'Meal Logged',    color: '#fb923c' },
+const EVENT_CFG: Record<string, { label: string; color: string; bg: string }> = {
+  app_open:               { label: 'App Open',       color: '#9ca3af', bg: '#1f2937' },
+  page_view:              { label: 'Page View',      color: '#818cf8', bg: '#1e1b4b' },
+  workout_started:        { label: 'Workout Start',  color: '#f59e0b', bg: '#292524' },
+  workout_completed:      { label: 'Workout Done',   color: '#10b981', bg: '#0d2318' },
+  trial_booked:           { label: 'Trial Booked',   color: '#60a5fa', bg: '#0f172a' },
+  trial_completed:        { label: 'Trial Done',     color: '#34d399', bg: '#0a1e17' },
+  subscription_purchased: { label: 'Subscribed',     color: '#4ade80', bg: '#0a1a0a' },
+  subscription_cancelled: { label: 'Cancelled',      color: '#f87171', bg: '#1c0a0a' },
+  referral_sent:          { label: 'Referral Sent',  color: '#a78bfa', bg: '#1a1030' },
+  class_booked:           { label: 'Class Booked',   color: '#38bdf8', bg: '#0c1a2e' },
+  meal_logged:            { label: 'Meal Logged',    color: '#fb923c', bg: '#1c1008' },
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const ANCHOR_TS = new Date('2026-04-11T14:47:00Z').getTime();
 
 function relTime(isoTs: string): string {
   const diff = ANCHOR_TS - new Date(isoTs).getTime();
-  const secs = Math.floor(diff / 1000);
-  if (secs < 60)  return `${secs}s ago`;
+  const secs = Math.max(0, Math.floor(diff / 1000));
+  if (secs < 60) return `${secs}s ago`;
   const mins = Math.floor(secs / 60);
-  if (mins < 60)  return `${mins}m ago`;
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  return `${Math.floor(hrs / 24)} days ago`;
 }
 
-function EventRow({ event, onUserClick }: { event: ApiEvent; onUserClick?: (id: string) => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const cfg = EVENT_CFG[event.type] ?? { label: event.type, color: '#6b7280' };
+function fmtTs(iso: string): string {
+  return new Date(iso).toLocaleString('en-IN', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  });
+}
 
-  const details = [
-    event.device_type && event.os && `${event.device_type} · ${event.os}`,
-    event.utm_source && event.utm_source !== 'organic' && `${event.utm_source}${event.utm_medium ? ` / ${event.utm_medium}` : ''}`,
-    event.utm_campaign && `Campaign: ${event.utm_campaign}`,
-    event.user_city && `City: ${event.user_city}`,
-    event.session_number > 0 && `Session #${event.session_number}`,
-  ].filter(Boolean) as string[];
+// ── EventAvatar ───────────────────────────────────────────────────────────────
 
-  const propEntries = Object.entries(event.properties).filter(([, v]) => v != null && v !== '');
-
+function EventAvatar({ type }: { type: string }) {
+  const cfg = EVENT_CFG[type] ?? { label: type, color: '#6b7280', bg: '#1f2937' };
   return (
-    <div
-      className="group border-b border-[#1a1a1a] last:border-0 hover:bg-[#1a1a1a] transition-colors duration-100 cursor-pointer"
-      onClick={() => setExpanded(e => !e)}
+    <span
+      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 select-none"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}22` }}
     >
-      {/* Main row */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Color dot */}
-        <span className="w-2 h-2 rounded-full flex-shrink-0 mt-px" style={{ background: cfg.color }} />
-
-        {/* Event + user */}
-        <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-semibold" style={{ color: cfg.color }}>
-            {cfg.label}
-          </span>
-          <span className="text-[12px] text-[#4b5563] mx-1.5">·</span>
-          <button
-            onClick={e => { e.stopPropagation(); onUserClick?.(event.user_id); }}
-            className="text-[12px] text-[#9ca3af] hover:text-white transition-colors"
-          >
-            {event.user_name}
-          </button>
-        </div>
-
-        {/* Time */}
-        <span className="text-[11px] text-[#3a3a3a] tabular-nums flex-shrink-0">{relTime(event.timestamp)}</span>
-
-        {/* Expand chevron */}
-        {(details.length > 0 || propEntries.length > 0) && (
-          <svg
-            width="12" height="12" viewBox="0 0 12 12" fill="none"
-            className={`flex-shrink-0 text-[#3a3a3a] group-hover:text-[#6b7280] transition-all duration-150 ${expanded ? 'rotate-180' : ''}`}
-          >
-            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        )}
-      </div>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="px-9 pb-3 space-y-2">
-          {details.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {details.map(d => (
-                <span key={d} className="text-[10px] text-[#6b7280] bg-[#252525] px-2 py-1 rounded font-mono">
-                  {d}
-                </span>
-              ))}
-            </div>
-          )}
-          {propEntries.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {propEntries.slice(0, 8).map(([k, v]) => (
-                <span key={k} className="text-[10px] bg-[#1e1e1e] border border-[#2a2a2a] px-2 py-1 rounded font-mono">
-                  <span className="text-[#4b5563]">{k}:</span>
-                  <span className="text-[#9ca3af] ml-1">{String(v)}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      {cfg.label.charAt(0).toUpperCase()}
+    </span>
   );
 }
 
-const FILTER_OPTIONS = [
-  { value: '', label: 'All events' },
-  { value: 'workout_completed',      label: 'Workout Done' },
-  { value: 'workout_started',        label: 'Workout Start' },
-  { value: 'subscription_purchased', label: 'Subscribed' },
-  { value: 'subscription_cancelled', label: 'Cancelled' },
-  { value: 'trial_booked',           label: 'Trial Booked' },
-  { value: 'trial_completed',        label: 'Trial Done' },
-  { value: 'referral_sent',          label: 'Referral' },
-  { value: 'meal_logged',            label: 'Meal Logged' },
-  { value: 'class_booked',           label: 'Class Booked' },
-  { value: 'app_open',               label: 'App Open' },
-  { value: 'page_view',              label: 'Page View' },
-];
+// ── EventRow ──────────────────────────────────────────────────────────────────
 
-interface EventStreamProps {
+function EventRow({ event, onUserClick }: { event: ApiEvent; onUserClick?: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const cfg = EVENT_CFG[event.type] ?? { label: event.type, color: '#6b7280', bg: '#1f2937' };
+  const propEntries = Object.entries(event.properties).filter(([, v]) => v != null && v !== '');
+
+  return (
+    <>
+      <tr
+        className={`border-b border-[#161616] transition-colors cursor-pointer group ${
+          expanded ? 'bg-[#101010]' : 'hover:bg-[#0f0f0f]'
+        }`}
+        onClick={() => setExpanded(e => !e)}
+      >
+        {/* Expand chevron */}
+        <td className="pl-4 pr-1 py-2.5 w-8">
+          <svg
+            width="11" height="11" viewBox="0 0 11 11" fill="none"
+            className={`text-[#2a2a2a] group-hover:text-[#4b5563] transition-all duration-150 ${expanded ? 'rotate-90' : ''}`}
+          >
+            <path d="M3.5 2l4 3.5-4 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </td>
+
+        {/* Event Name */}
+        <td className="px-3 py-2.5 min-w-[160px]">
+          <div className="flex items-center gap-2">
+            <EventAvatar type={event.type} />
+            <span className="text-[12px] font-medium" style={{ color: cfg.color }}>
+              {cfg.label}
+            </span>
+          </div>
+        </td>
+
+        {/* Time */}
+        <td className="px-3 py-2.5 min-w-[130px]">
+          <span className="text-[12px] text-[#6b7280] whitespace-nowrap">{relTime(event.timestamp)}</span>
+        </td>
+
+        {/* Distinct ID — user name as link */}
+        <td className="px-3 py-2.5 min-w-[140px]">
+          <button
+            onClick={e => { e.stopPropagation(); onUserClick?.(event.user_id); }}
+            className="text-[12px] text-[#60a5fa] hover:text-[#93c5fd] transition-colors truncate max-w-[140px] block text-left"
+            title={`${event.user_name} · ${event.user_id}`}
+          >
+            {event.user_name}
+          </button>
+        </td>
+
+        {/* City */}
+        <td className="px-3 py-2.5 min-w-[100px]">
+          <span className="text-[12px] text-[#9ca3af]">{event.user_city || event.city || '—'}</span>
+        </td>
+
+        {/* Country */}
+        <td className="px-3 py-2.5 min-w-[80px]">
+          <span className="text-[12px] text-[#9ca3af]">India</span>
+        </td>
+
+        {/* Operating System */}
+        <td className="px-3 py-2.5 min-w-[100px]">
+          <span className="text-[12px] text-[#9ca3af]">{event.os || '—'}</span>
+        </td>
+
+        {/* 3-dot menu placeholder */}
+        <td className="pr-4 pl-2 py-2.5 text-right" onClick={e => e.stopPropagation()}>
+          <button className="text-[#1e1e1e] group-hover:text-[#3a3a3a] hover:text-[#6b7280] transition-colors text-base leading-none px-1">
+            ···
+          </button>
+        </td>
+      </tr>
+
+      {/* Expanded properties */}
+      {expanded && (
+        <tr className="bg-[#090909] border-b border-[#161616]">
+          <td />
+          <td colSpan={7} className="px-4 py-3">
+            <div className="space-y-2">
+              {/* Context chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {event.utm_source && event.utm_source !== 'organic' && (
+                  <span className="text-[10px] text-[#6b7280] bg-[#161616] border border-[#1e1e1e] px-2 py-0.5 rounded font-mono">
+                    source: {event.utm_source}{event.utm_medium ? ` / ${event.utm_medium}` : ''}
+                  </span>
+                )}
+                {event.utm_campaign && event.utm_campaign !== '(none)' && (
+                  <span className="text-[10px] text-[#6b7280] bg-[#161616] border border-[#1e1e1e] px-2 py-0.5 rounded font-mono">
+                    campaign: {event.utm_campaign}
+                  </span>
+                )}
+                {event.device_type && (
+                  <span className="text-[10px] text-[#6b7280] bg-[#161616] border border-[#1e1e1e] px-2 py-0.5 rounded font-mono">
+                    {event.device_type} · {event.os}
+                  </span>
+                )}
+                {event.session_number > 0 && (
+                  <span className="text-[10px] text-[#6b7280] bg-[#161616] border border-[#1e1e1e] px-2 py-0.5 rounded font-mono">
+                    session #{event.session_number}
+                  </span>
+                )}
+              </div>
+
+              {/* Event properties */}
+              {propEntries.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {propEntries.slice(0, 12).map(([k, v]) => (
+                    <span key={k} className="text-[10px] bg-[#111] border border-[#1e1e1e] px-2 py-0.5 rounded font-mono">
+                      <span className="text-[#4b5563]">{k}:</span>
+                      <span className="text-[#9ca3af] ml-1">{String(v)}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function SkeletonRows() {
+  return (
+    <>
+      {[100, 80, 120, 90, 110, 75, 95, 85].map((w, i) => (
+        <tr key={i} className="border-b border-[#161616]" style={{ opacity: 1 - i * 0.09 }}>
+          <td className="pl-4 pr-1 py-2.5 w-8">
+            <div className="w-3 h-3 bg-[#1a1a1a] rounded-full animate-pulse" />
+          </td>
+          <td className="px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-[#1e1e1e] rounded-full animate-pulse" />
+              <div className="h-3 bg-[#1e1e1e] rounded animate-pulse" style={{ width: w }} />
+            </div>
+          </td>
+          {[72, 56, 64, 48, 40].map((cw, j) => (
+            <td key={j} className="px-3 py-2.5">
+              <div className="h-3 bg-[#1a1a1a] rounded animate-pulse" style={{ width: cw }} />
+            </td>
+          ))}
+          <td className="pr-4 pl-2 py-2.5" />
+        </tr>
+      ))}
+    </>
+  );
+}
+
+// ── EventStream ───────────────────────────────────────────────────────────────
+
+export interface EventStreamProps {
   filters?: GlobalFilters;
-  limit?: number;
-  showFilter?: boolean;
+  eventType?: string;
+  search?: string;
+  refreshKey?: number;
+  onTotalChange?: (total: number) => void;
   onUserClick?: (userId: string) => void;
+  onDataLoaded?: () => void;
+  /** legacy compat */
+  showFilter?: boolean;
   compact?: boolean;
+  limit?: number;
+  onUserClick_legacy?: (id: string) => void;
 }
 
 export default function EventStream({
-  filters = {}, limit = 50, showFilter = true, onUserClick, compact = false,
+  filters = {},
+  eventType = '',
+  search = '',
+  refreshKey = 0,
+  onTotalChange,
+  onUserClick,
+  onDataLoaded,
 }: EventStreamProps) {
   const [events, setEvents]         = useState<ApiEvent[]>([]);
   const [total, setTotal]           = useState(0);
+  const [offset, setOffset]         = useState(0);
   const [loading, setLoading]       = useState(true);
-  const [typeFilter, setTypeFilter] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastTs, setLastTs]         = useState<string | null>(null);
 
-  const filterKey = JSON.stringify(filters);
+  const filterKey = JSON.stringify({ filters, eventType, search, refreshKey });
 
-  const load = useCallback(() => {
-    setLoading(true);
+  const fetchPage = useCallback((off: number, append: boolean) => {
+    if (append) setLoadingMore(true); else setLoading(true);
+
     const qs = new URLSearchParams(filters as Record<string, string>);
-    qs.set('limit', String(limit));
-    if (typeFilter) qs.set('type', typeFilter);
+    qs.set('limit', '100');
+    qs.set('offset', String(off));
+    if (eventType) qs.set('type', eventType);
+    if (search)    qs.set('q', search);
+
     fetch(`/api/events?${qs}`)
       .then(r => r.json())
-      .then(d => { setEvents(d.events ?? []); setTotal(d.total ?? 0); setLoading(false); });
+      .then(d => {
+        const evts: ApiEvent[] = d.events ?? [];
+        setEvents(prev => append ? [...prev, ...evts] : evts);
+        setTotal(d.total ?? 0);
+        setOffset(off + evts.length);
+        if (evts.length > 0) setLastTs(evts[evts.length - 1].timestamp);
+        onTotalChange?.(d.total ?? 0);
+        onDataLoaded?.();
+        if (append) setLoadingMore(false); else setLoading(false);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey, typeFilter, limit]);
+  }, [filterKey]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    setOffset(0);
+    fetchPage(0, false);
+  }, [fetchPage]);
+
+  const canLoadMore = offset < total && !loadingMore;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className={`flex items-center justify-between flex-shrink-0 gap-3 ${compact ? 'mb-2' : 'mb-4'}`}>
-        <p className="text-[11px] text-[#4b5563]">
-          {loading ? 'Loading…' : `${total.toLocaleString()} events · showing ${events.length}`}
-        </p>
-        {showFilter && (
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="text-[11px] bg-[#1e1e1e] border border-[#2a2a2a] text-[#9ca3af] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#3a3a3a] transition-colors"
-          >
-            {FILTER_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        )}
+    <div className="bg-[#0b0b0b] border border-[#1a1a1a] rounded-xl overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+
+          {/* Table header */}
+          <thead>
+            <tr className="border-b border-[#1a1a1a]">
+              <th className="pl-4 pr-1 py-2.5 w-8" />
+              {[
+                'Event Name',
+                'Time',
+                'Distinct ID',
+                'City',
+                'Country',
+                'Operating System',
+                '',
+              ].map((h, i) => (
+                <th
+                  key={i}
+                  className="px-3 py-2.5 text-left text-[10px] font-semibold text-[#3a3a3a] uppercase tracking-widest whitespace-nowrap"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          {/* Table body */}
+          <tbody>
+            {loading ? (
+              <SkeletonRows />
+            ) : events.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-16 text-center text-[13px] text-[#2a2a2a]">
+                  No events match this filter
+                </td>
+              </tr>
+            ) : (
+              events.map(e => (
+                <EventRow key={e.id} event={e} onUserClick={onUserClick} />
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Feed */}
-      <div className="overflow-y-auto flex-1 bg-[#161616] border border-[#1e1e1e] rounded-xl">
-        {loading ? (
-          <div className="divide-y divide-[#1a1a1a]">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#252525] flex-shrink-0" />
-                <div className="flex-1 h-3 bg-[#1e1e1e] rounded animate-pulse" />
-                <div className="w-10 h-3 bg-[#1a1a1a] rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
-        ) : events.length === 0 ? (
-          <div className="text-center py-16 text-[#3a3a3a] text-sm">No events match this filter</div>
-        ) : (
-          events.map(e => (
-            <EventRow key={e.id} event={e} onUserClick={onUserClick} />
-          ))
-        )}
-      </div>
+      {/* Footer */}
+      {!loading && events.length > 0 && (
+        <div className="border-t border-[#1a1a1a] px-5 py-3 flex items-center justify-between gap-4">
+          <span className="text-[11px] text-[#2a2a2a]">
+            Showing {events.length.toLocaleString()} results
+            {lastTs ? ` through ${fmtTs(lastTs)}` : ''}
+          </span>
+          {canLoadMore ? (
+            <button
+              onClick={() => fetchPage(offset, true)}
+              className="text-[11px] font-semibold text-[#10b981] hover:text-[#34d399] transition-colors"
+            >
+              Load {Math.min(100, total - offset).toLocaleString()} more
+            </button>
+          ) : loadingMore ? (
+            <span className="text-[11px] text-[#3a3a3a]">Loading…</span>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,16 +5,22 @@ import { parseFilters, joinedWhere, jsonResponse } from '@/lib/queryHelpers';
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const f = parseFilters(sp);
-  const limit = Math.min(Number(sp.get('limit') ?? 50), 100);
+  const limit = Math.min(Number(sp.get('limit') ?? 100), 100);
   const offset = Number(sp.get('offset') ?? 0);
-  const typeFilter = sp.get('type');
+  const typeFilter = sp.get('type') ?? '';
+  const searchRaw  = (sp.get('q') ?? '').replace(/['"\\;%_]/g, '').trim().substring(0, 80);
 
   const { clause, params } = joinedWhere(f);
-  const typeClause = typeFilter ? `AND e.type = '${typeFilter.replace(/'/g, '')}'` : '';
+  const typeClause   = typeFilter ? `AND e.type = '${typeFilter.replace(/'/g, '')}'` : '';
+  const searchClause = searchRaw
+    ? `AND (LOWER(e.type) LIKE LOWER('%' || @searchQ || '%') OR LOWER(u.name) LIKE LOWER('%' || @searchQ || '%'))`
+    : '';
 
   const baseWhere = clause
-    ? `${clause} ${typeClause}`
-    : typeClause ? `WHERE 1=1 ${typeClause}` : '';
+    ? `${clause} ${typeClause} ${searchClause}`
+    : (typeClause || searchClause) ? `WHERE 1=1 ${typeClause} ${searchClause}` : '';
+
+  const queryParams = searchRaw ? { ...params, searchQ: searchRaw } : params;
 
   type EventRow = {
     id: string; user_id: string; user_name: string; user_city: string;
@@ -37,11 +43,11 @@ export async function GET(req: NextRequest) {
     ${baseWhere}
     ORDER BY e.timestamp DESC
     LIMIT @limit OFFSET @offset
-  `).all({ ...params, limit, offset }) as EventRow[];
+  `).all({ ...queryParams, limit, offset }) as EventRow[];
 
   const total = (db.prepare(`
     SELECT COUNT(*) as c FROM events e JOIN users u ON u.id=e.user_id ${baseWhere}
-  `).get(params) as { c: number }).c;
+  `).get(queryParams) as { c: number }).c;
 
   return jsonResponse({
     events: rows.map(r => ({ ...r, properties: r.properties ? JSON.parse(r.properties) : {} })),

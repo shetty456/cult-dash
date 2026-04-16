@@ -1,145 +1,92 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect, useCallback } from 'react';
 import { useFilters } from '@/lib/FilterContext';
 import EventStream from '@/components/EventStream';
 
-const EVENT_CFG: Record<string, { label: string; color: string }> = {
-  workout_completed:      { label: 'Workout Done',  color: '#10b981' },
-  workout_started:        { label: 'Workout Start', color: '#f59e0b' },
-  subscription_purchased: { label: 'Subscribed',    color: '#4ade80' },
-  subscription_cancelled: { label: 'Cancelled',     color: '#ef4444' },
-  trial_booked:           { label: 'Trial Booked',  color: '#60a5fa' },
-  trial_completed:        { label: 'Trial Done',    color: '#34d399' },
-  referral_sent:          { label: 'Referral',      color: '#a78bfa' },
-  class_booked:           { label: 'Class Booked',  color: '#34d399' },
-  meal_logged:            { label: 'Meal Logged',   color: '#fb923c' },
-  app_open:               { label: 'App Open',      color: '#6b7280' },
-  page_view:              { label: 'Page View',     color: '#818cf8' },
-};
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface EventTypeStat {
-  type: string; count: number; unique_users: number; pct: number; trend: number;
+type DateKey = 'custom' | 'today' | '1d' | '7d' | '30d' | '3m' | '6m' | '12m';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const DATE_PILLS: { key: DateKey; label: string }[] = [
+  { key: 'custom', label: 'Custom'    },
+  { key: 'today',  label: 'Today'     },
+  { key: '1d',     label: 'Yesterday' },
+  { key: '7d',     label: '7D'        },
+  { key: '30d',    label: '30D'       },
+  { key: '3m',     label: '3M'        },
+  { key: '6m',     label: '6M'        },
+  { key: '12m',    label: '12M'       },
+];
+
+const EVENT_TYPES = [
+  { value: 'app_open',               label: 'App Open',       color: '#9ca3af' },
+  { value: 'page_view',              label: 'Page View',      color: '#818cf8' },
+  { value: 'workout_started',        label: 'Workout Start',  color: '#f59e0b' },
+  { value: 'workout_completed',      label: 'Workout Done',   color: '#10b981' },
+  { value: 'trial_booked',           label: 'Trial Booked',   color: '#60a5fa' },
+  { value: 'trial_completed',        label: 'Trial Done',     color: '#34d399' },
+  { value: 'subscription_purchased', label: 'Subscribed',     color: '#4ade80' },
+  { value: 'subscription_cancelled', label: 'Cancelled',      color: '#f87171' },
+  { value: 'referral_sent',          label: 'Referral Sent',  color: '#a78bfa' },
+  { value: 'class_booked',           label: 'Class Booked',   color: '#38bdf8' },
+  { value: 'meal_logged',            label: 'Meal Logged',    color: '#fb923c' },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getDateBounds(key: DateKey): { from?: string; to?: string } {
+  if (key === 'custom') return {};
+  const now   = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const ago   = (d: number) => new Date(today.getTime() - d * 86400000).toISOString();
+  switch (key) {
+    case 'today': return { from: today.toISOString(), to: now.toISOString() };
+    case '1d':    return { from: ago(1), to: today.toISOString() };
+    case '7d':    return { from: ago(7),   to: now.toISOString() };
+    case '30d':   return { from: ago(30),  to: now.toISOString() };
+    case '3m':    return { from: ago(90),  to: now.toISOString() };
+    case '6m':    return { from: ago(180), to: now.toISOString() };
+    case '12m':   return { from: ago(365), to: now.toISOString() };
+    default:      return {};
+  }
 }
-interface EventStats {
-  summary: { total_events: number; unique_users: number };
-  byType: EventTypeStat[];
-  daily: { day: string; count: number }[];
+
+function relUpdated(ms: number): string {
+  const diff = Math.floor((Date.now() - ms) / 1000);
+  if (diff < 60)  return `Updated ${diff}s ago`;
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `Updated ${m} minute${m === 1 ? '' : 's'} ago`;
+  return `Updated ${Math.floor(m / 60)}h ago`;
 }
 
-function fmt(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
-function fmtDay(d: string) {
-  const [, m, day] = d.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${months[parseInt(m) - 1]} ${parseInt(day)}`;
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function Skeleton() {
+function RefreshIcon() {
   return (
-    <div className="space-y-5">
-      <div className="h-4 w-56 bg-[#1e1e1e] rounded animate-pulse" />
-      <div className="h-[120px] bg-[#161616] border border-[#1e1e1e] rounded-xl animate-pulse" />
-      <div className="space-y-2">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="h-10 bg-[#161616] border border-[#1e1e1e] rounded-lg animate-pulse"
-               style={{ opacity: 1 - i * 0.08 }} />
-        ))}
-      </div>
-    </div>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M11.5 6.5a5 5 0 1 1-1.44-3.56M11.5 1.5v3.5H8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   );
 }
 
-// ── Analytics ─────────────────────────────────────────────────────────────────
-
-function Analytics({ data }: { data: EventStats }) {
-  const { summary, byType, daily } = data;
-  const maxCount = byType[0]?.count ?? 1;
-  const chartData = daily.map(d => ({ count: d.count, label: fmtDay(d.day) }));
-
+function ChevronDown({ open }: { open: boolean }) {
   return (
-    <div className="space-y-5">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+      className={`transition-transform duration-150 ${open ? '' : '-rotate-90'}`}>
+      <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
 
-      {/* One-line summary — the only "header" you need */}
-      <p className="text-sm text-[#6b7280]">
-        <span className="text-white font-semibold">{fmt(summary.total_events)}</span> events from{' '}
-        <span className="text-white font-semibold">{fmt(summary.unique_users)}</span> users · last 14 days
-      </p>
-
-      {/* Slim volume chart */}
-      <div className="bg-[#161616] border border-[#1e1e1e] rounded-xl px-4 pt-3 pb-2">
-        <ResponsiveContainer width="100%" height={100}>
-          <BarChart data={chartData} barSize={14} margin={{ top: 4, right: 0, left: -32, bottom: 0 }}>
-            <XAxis
-              dataKey="label"
-              tick={{ fill: '#3a3a3a', fontSize: 9 }}
-              axisLine={false}
-              tickLine={false}
-              interval="preserveStartEnd"
-            />
-            <Tooltip
-              cursor={{ fill: '#ffffff06' }}
-              contentStyle={{ background: '#1e1e1e', border: '1px solid #2a2a2a', borderRadius: 6, fontSize: 11, padding: '4px 10px' }}
-              labelStyle={{ color: '#6b7280', fontSize: 10, marginBottom: 2 }}
-              itemStyle={{ color: '#10b981' }}
-              formatter={(v) => [fmt(Number(v)), 'events']}
-            />
-            <Bar dataKey="count" fill="#10b981" radius={[2, 2, 0, 0]} opacity={0.75} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Event list — bar IS the story */}
-      <div className="bg-[#161616] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
-        {byType.map(row => {
-          const cfg = EVENT_CFG[row.type] ?? { label: row.type, color: '#6b7280' };
-          const barPct = Math.round((row.count / maxCount) * 100);
-          const up = row.trend > 0;
-          const noChange = Math.abs(row.trend) < 1;
-
-          return (
-            <div key={row.type} className="flex items-center gap-4 px-4 py-2.5 hover:bg-[#1c1c1c] transition-colors duration-100">
-
-              {/* Name — fixed width, no dot needed, color on the bar is the identifier */}
-              <span className="text-[13px] font-medium text-[#d1d5db] w-32 flex-shrink-0 truncate">
-                {cfg.label}
-              </span>
-
-              {/* Bar — dominant, tall, unmissable */}
-              <div className="flex-1 h-5 bg-[#1e1e1e] rounded overflow-hidden">
-                <div
-                  className="h-full rounded transition-all duration-500 flex items-center"
-                  style={{ width: `${barPct}%`, background: cfg.color, opacity: 0.8 }}
-                />
-              </div>
-
-              {/* Count — right of bar */}
-              <span className="text-[13px] font-semibold text-white tabular-nums w-16 text-right flex-shrink-0">
-                {fmt(row.count)}
-              </span>
-
-              {/* WoW trend */}
-              <span className={`text-[11px] font-semibold w-12 text-right flex-shrink-0 tabular-nums ${
-                noChange ? 'text-[#3a3a3a]' : up ? 'text-[#10b981]' : 'text-[#ef4444]'
-              }`}>
-                {noChange ? '—' : `${up ? '+' : ''}${row.trend.toFixed(0)}%`}
-              </span>
-
-            </div>
-          );
-        })}
-      </div>
-
-      <p className="text-[10px] text-[#2a2a2a] text-right">% change vs previous 7 days</p>
-
-    </div>
+function SearchIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#3a3a3a] pointer-events-none">
+      <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M8 8l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
   );
 }
 
@@ -147,51 +94,178 @@ function Analytics({ data }: { data: EventStats }) {
 
 export default function EventsPage() {
   const { filters, setProfileUserId } = useFilters();
-  const filterKey = JSON.stringify(filters);
 
-  const [tab, setTab]   = useState<'analytics' | 'feed'>('analytics');
-  const [data, setData] = useState<EventStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dateKey,      setDateKey]      = useState<DateKey>('custom');
+  const [eventType,    setEventType]    = useState('');
+  const [search,       setSearch]       = useState('');
+  const [selectOpen,   setSelectOpen]   = useState(true);
+  const [filtersOpen,  setFiltersOpen]  = useState(false);
+  const [total,        setTotal]        = useState<number | null>(null);
+  const [refreshKey,   setRefreshKey]   = useState(0);
+  const [updatedMs,    setUpdatedMs]    = useState(Date.now());
+  const [updatedLabel, setUpdatedLabel] = useState('Updated just now');
 
+  // Tick the "Updated X ago" label
   useEffect(() => {
-    setLoading(true);
-    const qs = new URLSearchParams(filters as Record<string, string>);
-    fetch(`/api/event-stats?${qs}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey]);
+    const tick = () => setUpdatedLabel(relUpdated(updatedMs));
+    tick();
+    const id = setInterval(tick, 15_000);
+    return () => clearInterval(id);
+  }, [updatedMs]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
+
+  const handleDataLoaded = useCallback(() => {
+    setUpdatedMs(Date.now());
+    setUpdatedLabel('Updated just now');
+  }, []);
+
+  const dateBounds     = getDateBounds(dateKey);
+  const mergedFilters  = {
+    ...filters,
+    ...(dateBounds.from ? { from: dateBounds.from } : {}),
+    ...(dateBounds.to   ? { to:   dateBounds.to   } : {}),
+  };
 
   return (
-    <div className="px-4 sm:px-6 py-5 pb-8">
+    <div className="px-4 sm:px-6 py-5 pb-10 space-y-3 min-h-0">
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#1e1e1e] mb-5">
-        {([
-          { id: 'analytics', label: 'Analytics' },
-          { id: 'feed',      label: 'Live Feed' },
-        ] as const).map(t => (
+      {/* ── Header row ───────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* Left: title + refresh + updated */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-[15px] font-semibold text-white tracking-tight">Events</h1>
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors duration-150 ${
-              tab === t.id
-                ? 'text-white border-[#10b981]'
-                : 'text-[#6b7280] border-transparent hover:text-[#9ca3af]'
+            onClick={handleRefresh}
+            className="text-[#3a3a3a] hover:text-[#9ca3af] transition-colors mt-px"
+            title="Refresh"
+          >
+            <RefreshIcon />
+          </button>
+          <span className="text-[11px] text-[#3a3a3a]">{updatedLabel}</span>
+        </div>
+
+        {/* Right: search */}
+        <div className="relative">
+          <SearchIcon />
+          <input
+            type="text"
+            placeholder="Search events"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="bg-[#111] border border-[#1e1e1e] text-[12px] text-[#d1d5db] placeholder-[#2a2a2a] rounded-lg pl-7 pr-3 py-1.5 w-48 focus:outline-none focus:border-[#3a3a3a] transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* ── Date range pills ─────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {DATE_PILLS.map(p => (
+          <button
+            key={p.key}
+            onClick={() => setDateKey(p.key)}
+            className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+              dateKey === p.key
+                ? 'bg-[#1e1e1e] text-white border border-[#2a2a2a]'
+                : 'text-[#3a3a3a] hover:text-[#6b7280]'
             }`}
           >
-            {t.label}
+            {p.label}
           </button>
         ))}
       </div>
 
-      {tab === 'feed' ? (
-        <EventStream filters={filters} onUserClick={setProfileUserId} />
-      ) : loading || !data ? (
-        <Skeleton />
-      ) : (
-        <Analytics data={data} />
+      {/* ── SELECT EVENT accordion ───────────────────────────────────────── */}
+      <div className="border border-[#1a1a1a] rounded-xl overflow-hidden">
+        <button
+          onClick={() => setSelectOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-[10px] font-semibold text-[#3a3a3a] uppercase tracking-widest hover:bg-[#0f0f0f] transition-colors"
+        >
+          <span>Select Event</span>
+          <ChevronDown open={selectOpen} />
+        </button>
+
+        {selectOpen && (
+          <div className="border-t border-[#1a1a1a] px-4 py-3 bg-[#090909]">
+            <div className="flex items-center gap-1.5 flex-wrap">
+
+              {/* All Events chip */}
+              <button
+                onClick={() => setEventType('')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                  !eventType
+                    ? 'bg-[#0d2318] border-[#10b981]/40 text-[#10b981]'
+                    : 'bg-[#111] border-[#1e1e1e] text-[#4b5563] hover:text-[#9ca3af] hover:border-[#2a2a2a]'
+                }`}
+              >
+                <span
+                  className="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold"
+                  style={!eventType ? { background: '#10b981', color: '#000' } : { background: '#1e1e1e', color: '#6b7280' }}
+                >
+                  A
+                </span>
+                All Events
+              </button>
+
+              {/* Per-event-type chips */}
+              {EVENT_TYPES.map(et => (
+                <button
+                  key={et.value}
+                  onClick={() => setEventType(v => v === et.value ? '' : et.value)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                    eventType === et.value
+                      ? 'bg-[#1a1a1a] border-[#2a2a2a] text-white'
+                      : 'bg-[#111] border-[#1a1a1a] text-[#4b5563] hover:text-[#9ca3af] hover:border-[#1e1e1e]'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: et.color }} />
+                  {et.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── FILTERS accordion ────────────────────────────────────────────── */}
+      <div className="border border-[#1a1a1a] rounded-xl overflow-hidden">
+        <button
+          onClick={() => setFiltersOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-[10px] font-semibold text-[#3a3a3a] uppercase tracking-widest hover:bg-[#0f0f0f] transition-colors"
+        >
+          <span>Filters</span>
+          <ChevronDown open={filtersOpen} />
+        </button>
+
+        {filtersOpen && (
+          <div className="border-t border-[#1a1a1a] px-4 py-3 bg-[#090909]">
+            <p className="text-[11px] text-[#3a3a3a]">
+              Global filters (channel, city, device, plan) apply via the sidebar. No additional property filters active.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Results count ────────────────────────────────────────────────── */}
+      {total !== null && (
+        <p className="text-[12px] text-[#4b5563]">
+          Showing 100 most recent results of{' '}
+          <span className="text-[#9ca3af] font-medium">{total.toLocaleString()}</span> matches
+        </p>
       )}
+
+      {/* ── Events table ─────────────────────────────────────────────────── */}
+      <EventStream
+        filters={mergedFilters}
+        eventType={eventType}
+        search={search}
+        refreshKey={refreshKey}
+        onTotalChange={setTotal}
+        onUserClick={setProfileUserId}
+        onDataLoaded={handleDataLoaded}
+      />
 
     </div>
   );
