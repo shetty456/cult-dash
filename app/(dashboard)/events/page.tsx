@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFilters } from '@/lib/FilterContext';
 import EventStream from '@/components/EventStream';
 
@@ -122,7 +122,7 @@ export default function EventsPage() {
     setUpdatedLabel('Updated just now');
   }, []);
 
-  const dateBounds     = getDateBounds(dateKey);
+  const dateBounds     = useMemo(() => getDateBounds(dateKey), [dateKey]);
   const mergedFilters  = {
     ...filters,
     ...(dateBounds.from ? { from: dateBounds.from } : {}),
