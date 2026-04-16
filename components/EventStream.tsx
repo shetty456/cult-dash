@@ -42,10 +42,8 @@ const EVENT_CFG: Record<string, { label: string; color: string; bg: string }> = 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ANCHOR_TS = new Date('2026-04-11T14:47:00Z').getTime();
-
 function relTime(isoTs: string): string {
-  const diff = ANCHOR_TS - new Date(isoTs).getTime();
+  const diff = Date.now() - new Date(isoTs).getTime();
   const secs = Math.max(0, Math.floor(diff / 1000));
   if (secs < 60) return `${secs}s ago`;
   const mins = Math.floor(secs / 60);
