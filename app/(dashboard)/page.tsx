@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import MetricCardV2, { CardId } from '@/components/MetricCardV2';
 import { useFilters } from '@/lib/FilterContext';
 
@@ -34,31 +33,6 @@ function fmtNum(v: number, type: 'rupees' | 'pct' | 'number'): string {
   return v.toLocaleString();
 }
 
-// Compact event badge config ─────────────────────────────────────
-const EV_BADGE: Record<string, { label: string; color: string }> = {
-  workout_completed:      { label: 'Workout',    color: '#10b981' },
-  subscription_purchased: { label: 'Subscribed', color: '#4ade80' },
-  trial_booked:           { label: 'Trial',      color: '#60a5fa' },
-  subscription_cancelled: { label: 'Cancelled',  color: '#ef4444' },
-  referral_sent:          { label: 'Referral',   color: '#a78bfa' },
-  class_booked:           { label: 'Class',      color: '#34d399' },
-  meal_logged:            { label: 'Meal',       color: '#fb923c' },
-  workout_started:        { label: 'W. Start',   color: '#f59e0b' },
-  app_open:               { label: 'App Open',   color: '#4b5563' },
-  page_view:              { label: 'Page View',  color: '#818cf8' },
-  trial_completed:        { label: 'Trial ✓',    color: '#34d399' },
-};
-
-const ANCHOR = new Date('2026-04-11T14:47:00Z').getTime();
-function relT(iso: string) {
-  const diff = ANCHOR - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.floor(h / 24)}d`;
-}
-
 // ── Overview page ──────────────────────────────────────────────────
 export default function OverviewPage() {
   const { filters, setProfileUserId } = useFilters();
@@ -70,10 +44,6 @@ export default function OverviewPage() {
   const [sparklines, setSparklines] = useState<Record<CardId, number[]>>({
     wau: [], nsm: [], cac: [], conversion: [], revenue: [],
   });
-  const [events, setEvents] = useState<{
-    id: string; type: string; user_name: string; user_city: string;
-    user_id: string; timestamp: string;
-  }[]>([]);
 
   useEffect(() => {
     const qs = new URLSearchParams(filters as Record<string, string>);
@@ -83,8 +53,7 @@ export default function OverviewPage() {
       fetch(`/api/wau?${qs}`).then(r => r.json()),
       fetch(`/api/nsm?${qs}`).then(r => r.json()),
       fetch(`/api/revenue?${qs}`).then(r => r.json()),
-      fetch(`/api/events?${qs}&limit=12`).then(r => r.json()),
-    ]).then(([m, funnel, wauData, nsmData, revData, evData]) => {
+    ]).then(([m, funnel, wauData, nsmData, revData]) => {
       setMetrics(m);
 
       const stages = Array.isArray(funnel) ? funnel : [];
@@ -102,7 +71,6 @@ export default function OverviewPage() {
       const convSpark = [rate * 0.82, rate * 0.87, rate * 0.9, rate * 0.93, rate * 0.95, rate * 0.97, rate * 0.99, rate];
 
       setSparklines({ wau: wauSpark, nsm: nsmSpark, cac: cacSpark, conversion: convSpark, revenue: revSpark });
-      setEvents(evData.events ?? []);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey]);
@@ -178,44 +146,6 @@ export default function OverviewPage() {
         {activeCard === 'cac'        && <CACBreakdownChart  filters={filters} />}
         {activeCard === 'conversion' && <FunnelDetailChart  filters={filters} />}
         {activeCard === 'revenue'    && <RevenueDetailChart filters={filters} />}
-      </div>
-
-      {/* ── Recent Activity ── */}
-      <div className="bg-[#161616] border border-[#2a2a2a] rounded-xl">
-        <div className="px-4 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-white">Recent Activity</p>
-            <p className="text-[10px] text-[#4b5563]">Latest events across all users</p>
-          </div>
-          <Link href="/events" className="text-[10px] font-semibold text-[#10b981] hover:text-[#4ade80] transition-colors">
-            Full stream →
-          </Link>
-        </div>
-        <div className="divide-y divide-[#1a1a1a]">
-          {events.length === 0 ? (
-            <div className="px-4 py-8 text-center text-[#3a3a3a] text-xs">Loading events…</div>
-          ) : events.map(e => {
-            const cfg = EV_BADGE[e.type] ?? { label: e.type, color: '#6b7280' };
-            return (
-              <div key={e.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-[#1a1a1a] transition-colors">
-                <span
-                  className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex-shrink-0 min-w-[64px] text-center"
-                  style={{ color: cfg.color, background: `${cfg.color}22`, border: `1px solid ${cfg.color}33` }}
-                >
-                  {cfg.label}
-                </span>
-                <button
-                  onClick={() => setProfileUserId(e.user_id)}
-                  className="text-xs font-medium text-white hover:text-[#10b981] transition-colors truncate text-left"
-                >
-                  {e.user_name}
-                </button>
-                <span className="text-[10px] text-[#3a3a3a] truncate flex-shrink-0">{e.user_city}</span>
-                <span className="ml-auto text-[10px] text-[#3a3a3a] tabular-nums flex-shrink-0">{relT(e.timestamp)}</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
     </div>
