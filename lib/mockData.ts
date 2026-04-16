@@ -408,11 +408,11 @@ export const CAC_TREND: { month: string; blended: number; paid: number; organic:
 }));
 
 // 7. FUNNEL_STAGES
-const totalInstalls = 22000;
-const signups = Math.round(totalInstalls * 0.35);
-const trialsBooked = Math.round(signups * 0.62);
-const trialCompleted = Math.round(trialsBooked * 0.74);
-const paid = USERS.filter(u => u.plan !== 'free').length;
+const totalInstalls = 500000;
+const signups = 50000;
+const trialsBooked = 15000;
+const trialCompleted = 8000;
+const paid = 3000;
 
 export const FUNNEL_STAGES: { stage: string; count: number; pct: number; dropPct: number }[] = [
   { stage: 'Installs', count: totalInstalls, pct: 100, dropPct: 0 },

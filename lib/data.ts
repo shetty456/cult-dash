@@ -215,11 +215,11 @@ const BASE_METRICS: MetricSet = {
 };
 
 const BASE_FUNNEL: FunnelStage[] = [
-  { label: 'Install',       count: 100000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 2.1  },
-  { label: 'Sign-up',       count: 35000,  convRate: 35,   dropOffRate: 65,   isBiggestLeak: true,  wowChange: -0.8 },
-  { label: 'Trial Booking', count: 21700,  convRate: 62,   dropOffRate: 38,   isBiggestLeak: false, wowChange: 1.5  },
-  { label: 'First Visit',   count: 12600,  convRate: 58,   dropOffRate: 42,   isBiggestLeak: false, wowChange: 2.2  },
-  { label: 'Paid Sub',      count: 6048,   convRate: 48,   dropOffRate: 52,   isBiggestLeak: false, wowChange: 3.1  },
+  { label: 'Install',       count: 500000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 2.1  },
+  { label: 'Sign-up',       count: 50000,  convRate: 10,   dropOffRate: 90,   isBiggestLeak: true,  wowChange: -0.8 },
+  { label: 'Trial Booking', count: 15000,  convRate: 30,   dropOffRate: 70,   isBiggestLeak: false, wowChange: 1.5  },
+  { label: 'First Visit',   count: 8000,   convRate: 53,   dropOffRate: 47,   isBiggestLeak: false, wowChange: 2.2  },
+  { label: 'Paid Sub',      count: 3000,   convRate: 37,   dropOffRate: 63,   isBiggestLeak: false, wowChange: 3.1  },
 ];
 
 const ALL_ALERTS: Alert[] = [
@@ -235,7 +235,7 @@ const ALL_ALERTS: Alert[] = [
   {
     id: 'alert-trial-conv',
     title: 'Trial Booking Conversion ↓5.2% WoW',
-    detail: 'Check trainer availability and onboarding UX. Sign-up → Trial fell from 67.2% to 62.0%.',
+    detail: 'Check trainer availability and onboarding UX. Sign-up → Trial fell from 35.0% to 30.0%.',
     severity: 'Medium',
     drillLabel: 'View Trial Quality Metrics',
     drillHref: '#trial-metrics',
@@ -318,25 +318,25 @@ const CHANNEL_OVERRIDES: Partial<Record<Channel, ChannelOverride>> = {
 
 const CHANNEL_FUNNELS: Partial<Record<Channel, FunnelStage[]>> = {
   'Referrals': [
-    { label: 'Install',       count: 45000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 3.4  },
-    { label: 'Sign-up',       count: 22500, convRate: 50,   dropOffRate: 50,   isBiggestLeak: true,  wowChange: 1.2  },
-    { label: 'Trial Booking', count: 15750, convRate: 70,   dropOffRate: 30,   isBiggestLeak: false, wowChange: 2.1  },
-    { label: 'First Visit',   count: 10395, convRate: 66,   dropOffRate: 34,   isBiggestLeak: false, wowChange: 3.2  },
-    { label: 'Paid Sub',      count: 5613,  convRate: 54,   dropOffRate: 46,   isBiggestLeak: false, wowChange: 4.1  },
+    { label: 'Install',       count: 125000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 3.4  },
+    { label: 'Sign-up',       count: 18750,  convRate: 15,   dropOffRate: 85,   isBiggestLeak: true,  wowChange: 1.2  },
+    { label: 'Trial Booking', count: 9375,   convRate: 50,   dropOffRate: 50,   isBiggestLeak: false, wowChange: 2.1  },
+    { label: 'First Visit',   count: 5813,   convRate: 62,   dropOffRate: 38,   isBiggestLeak: false, wowChange: 3.2  },
+    { label: 'Paid Sub',      count: 2325,   convRate: 40,   dropOffRate: 60,   isBiggestLeak: false, wowChange: 4.1  },
   ],
   'Paid Digital': [
-    { label: 'Install',       count: 60000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 0.5  },
-    { label: 'Sign-up',       count: 15600, convRate: 26,   dropOffRate: 74,   isBiggestLeak: true,  wowChange: -2.1 },
-    { label: 'Trial Booking', count: 8580,  convRate: 55,   dropOffRate: 45,   isBiggestLeak: false, wowChange: -0.8 },
-    { label: 'First Visit',   count: 4547,  convRate: 53,   dropOffRate: 47,   isBiggestLeak: false, wowChange: 1.1  },
-    { label: 'Paid Sub',      count: 1910,  convRate: 42,   dropOffRate: 58,   isBiggestLeak: false, wowChange: 0.7  },
+    { label: 'Install',       count: 165000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 0.5  },
+    { label: 'Sign-up',       count: 8250,   convRate: 5,    dropOffRate: 95,   isBiggestLeak: true,  wowChange: -2.1 },
+    { label: 'Trial Booking', count: 2888,   convRate: 35,   dropOffRate: 65,   isBiggestLeak: false, wowChange: -0.8 },
+    { label: 'First Visit',   count: 1329,   convRate: 46,   dropOffRate: 54,   isBiggestLeak: false, wowChange: 1.1  },
+    { label: 'Paid Sub',      count: 359,    convRate: 27,   dropOffRate: 73,   isBiggestLeak: false, wowChange: 0.7  },
   ],
   'Corporate': [
-    { label: 'Install',       count: 8000, convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 5.1  },
-    { label: 'Sign-up',       count: 5600, convRate: 70,   dropOffRate: 30,   isBiggestLeak: false, wowChange: 4.8  },
-    { label: 'Trial Booking', count: 4424, convRate: 79,   dropOffRate: 21,   isBiggestLeak: false, wowChange: 5.0  },
-    { label: 'First Visit',   count: 3315, convRate: 75,   dropOffRate: 25,   isBiggestLeak: true,  wowChange: 3.9  },
-    { label: 'Paid Sub',      count: 2319, convRate: 70,   dropOffRate: 30,   isBiggestLeak: false, wowChange: 6.2  },
+    { label: 'Install',       count: 25000,  convRate: null, dropOffRate: null, isBiggestLeak: false, wowChange: 5.1  },
+    { label: 'Sign-up',       count: 10000,  convRate: 40,   dropOffRate: 60,   isBiggestLeak: true,  wowChange: 4.8  },
+    { label: 'Trial Booking', count: 8000,   convRate: 80,   dropOffRate: 20,   isBiggestLeak: false, wowChange: 5.0  },
+    { label: 'First Visit',   count: 6000,   convRate: 75,   dropOffRate: 25,   isBiggestLeak: false, wowChange: 3.9  },
+    { label: 'Paid Sub',      count: 3600,   convRate: 60,   dropOffRate: 40,   isBiggestLeak: false, wowChange: 6.2  },
   ],
 };
 
@@ -347,7 +347,7 @@ const CHANNEL_FUNNELS: Partial<Record<Channel, FunnelStage[]>> = {
 export const CHANNEL_TABLE_DATA: ChannelRow[] = [
   {
     name: 'Referrals',
-    installs: 45000,
+    installs: 125000,
     installsWoW: 2.3,
     trialConv: 68,
     paidConv: 52,
@@ -360,7 +360,7 @@ export const CHANNEL_TABLE_DATA: ChannelRow[] = [
   },
   {
     name: 'Organic Search',
-    installs: 22000,
+    installs: 110000,
     installsWoW: 0.8,
     trialConv: 63,
     paidConv: 48,
@@ -373,7 +373,7 @@ export const CHANNEL_TABLE_DATA: ChannelRow[] = [
   },
   {
     name: 'Paid Digital',
-    installs: 18000,
+    installs: 165000,
     installsWoW: -2.1,
     trialConv: 52,
     paidConv: 42,
@@ -386,7 +386,7 @@ export const CHANNEL_TABLE_DATA: ChannelRow[] = [
   },
   {
     name: 'Brand/ATL',
-    installs: 10000,
+    installs: 75000,
     installsWoW: 1.5,
     trialConv: 58,
     paidConv: 45,
@@ -399,7 +399,7 @@ export const CHANNEL_TABLE_DATA: ChannelRow[] = [
   },
   {
     name: 'Corporate B2B',
-    installs: 5000,
+    installs: 25000,
     installsWoW: 4.2,
     trialConv: 72,
     paidConv: 68,

@@ -47,7 +47,7 @@ const CHANNELS = ['Paid Digital', 'Organic', 'Referrals', 'Brand/ATL', 'Corporat
 const CHANNEL_W = [0.30, 0.25, 0.25, 0.10, 0.10];
 
 const PLANS = ['free', 'monthly', 'quarterly', 'annual'];
-const PLAN_W = [0.30, 0.35, 0.20, 0.15];
+const PLAN_W = [0.94, 0.030, 0.020, 0.010]; // ~6% paid → 120 DB users × 25 = 3K displayed
 const PLAN_LTV: Record<string, number> = { free: 0, monthly: 399, quarterly: 999, annual: 2999 };
 
 const WORKOUT_TYPES = ['Yoga','HIIT','Strength','Cycling','Zumba','Boxing','Running','Pilates'];
