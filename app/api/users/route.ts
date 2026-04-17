@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import db from '@/lib/db';
+import db, { SCALE } from '@/lib/db';
 import { parseFilters, userWhere, jsonResponse } from '@/lib/queryHelpers';
 
 const ALLOWED_SORT = ['name','city','age','plan','channel','workouts_completed','ltv','status','last_active'] as const;
@@ -68,5 +68,14 @@ export async function GET(req: NextRequest) {
     FROM users u ${statsBase}
   `).get(statsParams) as { total: number; active: number; atRisk: number; churned: number; nsmReached: number };
 
-  return jsonResponse({ users, total, offset, limit, stats: statsRow });
+  return jsonResponse({
+    users, total, offset, limit,
+    stats: {
+      total:      statsRow.total      * SCALE,
+      active:     statsRow.active     * SCALE,
+      atRisk:     statsRow.atRisk     * SCALE,
+      churned:    statsRow.churned    * SCALE,
+      nsmReached: statsRow.nsmReached * SCALE,
+    },
+  });
 }

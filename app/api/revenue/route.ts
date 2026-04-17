@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import db, { SCALE } from '@/lib/db';
-import { parseFilters, userWhere, jsonResponse } from '@/lib/queryHelpers';
+import { parseFilters, joinedWhere, jsonResponse } from '@/lib/queryHelpers';
 
 const PLAN_COLORS: Record<string, string> = {
   monthly: '#60a5fa', quarterly: '#10b981', annual: '#f59e0b', free: '#4b5563',
@@ -8,9 +8,9 @@ const PLAN_COLORS: Record<string, string> = {
 
 export async function GET(req: NextRequest) {
   const f = parseFilters(req.nextUrl.searchParams);
-  const { clause, params } = userWhere(f);
+  const { clause, params } = joinedWhere(f);
 
-  // Daily revenue from subscription_purchased events (via user ltv proxy)
+  // Daily revenue from subscription_purchased events in the date window
   type DailyRow = { date: string; revenue: number };
   const dailyRaw = db.prepare(`
     SELECT date(e.timestamp) as date, SUM(u.ltv) as revenue
@@ -32,11 +32,13 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // Revenue by plan
+  // Revenue by plan (subscribers who purchased in the date window)
   type PlanRow = { plan: string; revenue: number; cnt: number };
   const planRows = db.prepare(`
-    SELECT u.plan, SUM(u.ltv) * ${SCALE} as revenue, COUNT(*) as cnt
-    FROM users u ${clause ? clause + " AND u.plan != 'free'" : "WHERE u.plan != 'free'"}
+    SELECT u.plan, SUM(u.ltv) * ${SCALE} as revenue, COUNT(DISTINCT u.id) as cnt
+    FROM events e
+    JOIN users u ON u.id = e.user_id
+    ${clause ? clause + " AND e.type='subscription_purchased' AND u.plan != 'free'" : "WHERE e.type='subscription_purchased' AND u.plan != 'free'"}
     GROUP BY u.plan
   `).all(params) as PlanRow[];
 

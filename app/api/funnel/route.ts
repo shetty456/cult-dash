@@ -14,13 +14,13 @@ export async function GET(req: NextRequest) {
   const firstVisit = count(`SELECT COUNT(DISTINCT e.user_id) as c FROM events e JOIN users u ON u.id=e.user_id ${clause ? clause + " AND e.type='trial_completed'" : "WHERE e.type='trial_completed'"}`);
   const paid      = count(`SELECT COUNT(*) as c FROM users u ${clause ? clause + " AND u.plan != 'free'" : "WHERE u.plan != 'free'"}`);
 
-  // Staged scale: visitors hardcoded, sign-ups ×25, trials ×25, first-visit ×25, paid ×2
+  // Staged scale: visitors hardcoded, all other stages ×25
   const stages = [
     { stage: 'App Visitors',    count: 500000,             pct: 100 },
     { stage: 'Sign-ups',        count: signups * SCALE,    pct: 10 },
     { stage: 'Trial Booked',    count: trials * SCALE,     pct: null },
     { stage: 'First Visit',     count: firstVisit * SCALE, pct: null },
-    { stage: 'Paid Subscriber', count: paid * 2,           pct: null },
+    { stage: 'Paid Subscriber', count: paid * SCALE,        pct: null },
   ].map((s, i, arr) => ({
     ...s,
     pct: Math.round((s.count / arr[0].count) * 100 * 10) / 10,

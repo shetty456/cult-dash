@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { FilterProvider, useFilters } from '@/lib/FilterContext';
 import Sidebar from '@/components/Sidebar';
-import GlobalFilterBar from '@/components/GlobalFilterBar';
+import DateRangePicker from '@/components/DateRangePicker';
 import UserProfile from '@/components/UserProfile';
 
-const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
-  '/':         { title: 'Growth Overview',  sub: 'Key metrics, funnel health, and live activity at a glance' },
-  '/events':   { title: 'Events',            sub: 'Volume, trends, and breakdown by event type' },
-  '/users':    { title: 'User Explorer',    sub: 'Browse, search, and drill into individual user journeys' },
+const PAGE_TITLES: Record<string, string> = {
+  '/':       'Growth Overview',
+  '/events': 'Events',
+  '/users':  'User Explorer',
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { filters, setFilters, profileUserId, setProfileUserId } = useFilters();
   const pathname = usePathname();
-  const meta = PAGE_TITLES[pathname] ?? PAGE_TITLES['/'];
+  const title = PAGE_TITLES[pathname] ?? PAGE_TITLES['/'];
 
   return (
     <div className="flex h-screen bg-[#0f0f0f] overflow-hidden">
@@ -35,8 +35,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         {/* ── Sticky header — hidden on Events page (it owns its own header) ── */}
         {pathname !== '/events' && (
           <div className="flex-shrink-0 sticky top-0 z-20 bg-[#0f0f0f] border-b border-[#1e1e1e]">
-            {/* Top row */}
-            <div className="px-4 sm:px-6 py-3 flex items-center gap-3">
+            <div className="px-4 sm:px-6 py-3 flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Open menu"
@@ -47,9 +46,10 @@ function Shell({ children }: { children: React.ReactNode }) {
                 </svg>
               </button>
 
+              <h1 className="text-sm font-bold text-white flex-shrink-0">{title}</h1>
+
               <div className="flex-1 min-w-0">
-                <h1 className="text-sm font-bold text-white truncate">{meta.title}</h1>
-                <p className="text-[10px] text-[#4b5563] hidden sm:block truncate">{meta.sub}</p>
+                <DateRangePicker filters={filters} onChange={setFilters} />
               </div>
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -57,15 +57,9 @@ function Shell({ children }: { children: React.ReactNode }) {
                 <span className="text-[11px] text-[#4b5563] hidden sm:block">Live</span>
               </div>
             </div>
-
-            {/* Filter row */}
-            <div className="px-4 sm:px-6 pb-3">
-              <GlobalFilterBar filters={filters} onChange={setFilters} />
-            </div>
           </div>
         )}
 
-        {/* ── Scrollable content ── */}
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>
