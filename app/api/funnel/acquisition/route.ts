@@ -16,12 +16,13 @@ const VISITOR_SHARE: Record<string, number> = {
   'Brand/ATL':    0.10,
   'Corporate':    0.10,
 };
-const TOTAL_VISITORS = 500000; // realistic monthly app installs for a mid-size India fitness platform
+const TOTAL_VISITORS = 500000; // realistic monthly app installs (used only as ceiling)
 
-// Pre-signup funnel estimates (anonymous users drop off before creating an account)
-// Industry research: India fitness apps 2025-2026
+// Conversion rates for pre-signup stages (anonymous users not in DB)
+// Derived from: 500K installs → 300K OB start → 150K OB done → 50K sign-ups
+const SIGNUP_RATE   = 0.10;  // 10% of installs complete sign-up
 const OB_START_RATE = 0.60;  // 60% of installs start onboarding
-const OB_DONE_RATE  = 0.30;  // 30% of installs complete onboarding (50% of starters)
+const OB_DONE_RATE  = 0.30;  // 30% of installs complete onboarding
 
 const DIGITAL  = ['Paid Digital', 'Organic'];
 const PHYSICAL = ['Referrals', 'Brand/ATL', 'Corporate'];
@@ -47,29 +48,27 @@ function countEvent(type: string, from: string, to: string, channels?: string[])
   return (db.prepare(sql).get(...(params as string[])) as { c: number }).c;
 }
 
-function countPaid(channels?: string[]): number {
-  const ph = channels ? channels.map(() => '?').join(',') : null;
-  const chClause = ph ? `AND u.channel IN (${ph})` : '';
-  const sql = `SELECT COUNT(*) as c FROM users u WHERE u.plan != 'free' ${chClause}`;
-  return (db.prepare(sql).get(...((channels ?? []) as string[])) as { c: number }).c;
-}
-
-function channelShare(channels?: string[]): number {
-  if (!channels) return 1;
-  return channels.reduce((s, ch) => s + (VISITOR_SHARE[ch] ?? 0), 0);
-}
-
 function buildFunnel(from: string, to: string, channels?: string[]): FunnelRow[] {
-  const share = channelShare(channels);
-  // Top-of-funnel stages estimated proportionally (anonymous users not in DB)
+  // All stages are derived from the date-filtered sign-up count so the entire
+  // funnel responds correctly to any date range the user selects.
+  const signups = countEvent('sign_up', from, to, channels) * SCALE;
+
+  // Top 3 pre-signup stages: anonymous visitors not in DB, so we back-calculate
+  // from sign-ups using known conversion rates, capped at realistic channel ceiling.
+  const share      = channels ? channels.reduce((s, ch) => s + (VISITOR_SHARE[ch] ?? 0), 0) : 1;
+  const maxInstall = Math.round(TOTAL_VISITORS * share);
+  const installs   = Math.min(maxInstall,                         Math.round(signups / SIGNUP_RATE));
+  const obStart    = Math.min(Math.round(maxInstall * OB_START_RATE), Math.round(signups / SIGNUP_RATE * OB_START_RATE));
+  const obDone     = Math.min(Math.round(maxInstall * OB_DONE_RATE),  Math.round(signups / SIGNUP_RATE * OB_DONE_RATE));
+
   const raw = [
-    { stage: 'App Install',          count: Math.round(TOTAL_VISITORS  * share) },
-    { stage: 'Onboarding Started',   count: Math.round(TOTAL_VISITORS  * OB_START_RATE * share) },
-    { stage: 'Onboarding Completed', count: Math.round(TOTAL_VISITORS  * OB_DONE_RATE  * share) },
-    { stage: 'Sign-up',              count: countEvent('sign_up',         from, to, channels) * SCALE },
-    { stage: 'Trial Booked',         count: countEvent('trial_booked',    from, to, channels) * SCALE },
-    { stage: 'First Visit',          count: countEvent('trial_completed', from, to, channels) * SCALE },
-    { stage: 'Paid Subscriber',      count: countPaid(channels)                               * SCALE },
+    { stage: 'App Install',          count: installs },
+    { stage: 'Onboarding Started',   count: obStart  },
+    { stage: 'Onboarding Completed', count: obDone   },
+    { stage: 'Sign-up',              count: signups  },
+    { stage: 'Trial Booked',         count: countEvent('trial_booked',          from, to, channels) * SCALE },
+    { stage: 'First Visit',          count: countEvent('trial_completed',        from, to, channels) * SCALE },
+    { stage: 'Paid Subscriber',      count: countEvent('subscription_purchased', from, to, channels) * SCALE },
   ];
   const top = raw[0].count || 1;
   return raw.map((s, i, arr) => ({
@@ -107,8 +106,9 @@ function autoInsight(
   overall: FunnelRow[], digital: FunnelRow[], physical: FunnelRow[],
   cacD: number, cacP: number,
 ): string {
-  const dTrialPaid = digital[4].count / Math.max(1, digital[2].count) * 100;
-  const pTrialPaid = physical[4].count / Math.max(1, physical[2].count) * 100;
+  // indices: 0=Install 1=OB Start 2=OB Done 3=Sign-up 4=Trial 5=Visit 6=Paid
+  const dTrialPaid = digital[6].count  / Math.max(1, digital[4].count)  * 100;
+  const pTrialPaid = physical[6].count / Math.max(1, physical[4].count) * 100;
 
   if (Math.abs(dTrialPaid - pTrialPaid) > 5 && digital[2].count > 0 && physical[2].count > 0) {
     const better = dTrialPaid > pTrialPaid ? 'Digital' : 'Physical';
