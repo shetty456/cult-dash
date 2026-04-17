@@ -78,6 +78,19 @@ function buildFunnel(from: string, to: string, channels?: string[]): FunnelRow[]
   }));
 }
 
+// Cost per paid subscriber = CAC ÷ (trial→paid conversion rate)
+// This is the single number that tells you which channel is truly efficient end-to-end.
+function costPerPaid(funnel: FunnelRow[], cac: number) {
+  const trial    = funnel[4]?.count ?? 0;  // Trial Booked
+  const paid     = funnel[6]?.count ?? 0;  // Paid Subscriber
+  const convRate = trial > 0 ? paid / trial : 0;
+  return {
+    cost:     convRate > 0 ? Math.round(cac / convRate) : 0,
+    cac,
+    convRate: Math.round(convRate * 1000) / 10,
+  };
+}
+
 function weightedCac(channels?: string[]): number {
   const ph = channels ? channels.map(() => '?').join(',') : null;
   const chClause = ph ? `WHERE channel IN (${ph})` : '';
@@ -159,10 +172,23 @@ export async function GET(req: NextRequest) {
 
   const insight = autoInsight(overall, digital, physical, cacDigital, cacPhysical);
 
+  const blendedCac = weightedCac();
+  const costPerPaidSub = {
+    overall:   costPerPaid(overall,  blendedCac),
+    digital:   costPerPaid(digital,  cacDigital),
+    physical:  costPerPaid(physical, cacPhysical),
+    byChannel: Object.fromEntries(
+      ALL_CHANNELS.map(ch => [ch, costPerPaid(subChannels[ch], CHANNEL_CAC[ch] ?? 750)])
+    ),
+    // India fitness-app industry average cost per paid subscriber (2025–2026)
+    industryAvg: 4000,
+  };
+
   return jsonResponse({
     overall, digital, physical, subChannels,
     cac: { digital: cacDigital, physical: cacPhysical },
     cacByChannel,
+    costPerPaidSub,
     industryBenchmarks: INDUSTRY,
     timeToFirstVisit: { digital: timeDigital, physical: timePhysical },
     timeByChannel,

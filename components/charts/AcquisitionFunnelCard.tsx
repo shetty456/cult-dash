@@ -8,6 +8,7 @@ import {
 import { GlobalFilters } from '@/lib/queryHelpers';
 
 interface FunnelRow { stage: string; count: number; pct: number; dropPct: number; }
+interface CostEntry { cost: number; cac: number; convRate: number; }
 interface AcquisitionData {
   overall:  FunnelRow[];
   digital:  FunnelRow[];
@@ -15,10 +16,12 @@ interface AcquisitionData {
   subChannels: Record<string, FunnelRow[]>;
   cac: { digital: number; physical: number };
   cacByChannel: Record<string, number>;
-  industryBenchmarks: {
-    digital:  { cac: number };
-    physical: { cac: number };
+  costPerPaidSub: {
+    overall: CostEntry; digital: CostEntry; physical: CostEntry;
+    byChannel: Record<string, CostEntry>;
+    industryAvg: number;
   };
+  industryBenchmarks: { digital: { cac: number }; physical: { cac: number } };
   timeToFirstVisit: { digital: number; physical: number };
   timeByChannel: Record<string, number>;
   insight: string;
@@ -80,17 +83,6 @@ function FunnelTooltip({ active, payload, label }: {
   );
 }
 
-function CacTooltip({ active, payload, label }: {
-  active?: boolean; payload?: { value: number }[]; label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-[#1e1e1e] border border-[#3a3a3a] rounded-lg px-3 py-2 text-xs shadow-lg">
-      <p className="text-[#9ca3af] font-semibold mb-1">{label}</p>
-      <p className="text-white font-bold">₹{(payload[0]?.value ?? 0).toLocaleString()}</p>
-    </div>
-  );
-}
 
 export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilters }) {
   const [data, setData]               = useState<AcquisitionData | null>(null);
@@ -138,23 +130,6 @@ export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilt
   // Mode: which bars to render
   const showDetailed = byChannel && detailed;
   const showBinary   = byChannel && !detailed;
-
-  // CAC chart data
-  const cacChartData = showDetailed
-    ? subChKeys.map(ch => ({
-        channel:   CH_LABEL[ch] ?? ch,
-        fullCh:    ch,
-        cac:       data.cacByChannel[ch] ?? 0,
-        benchmark: CH_GROUP[ch] === 'Digital'
-          ? data.industryBenchmarks.digital.cac
-          : data.industryBenchmarks.physical.cac,
-        fill: CH_COLOR[ch] ?? '#6b7280',
-        ttfv: data.timeByChannel[ch] ?? 0,
-      }))
-    : [
-        { channel: 'Digital',  fullCh: 'Digital',  cac: data.cac.digital,  benchmark: data.industryBenchmarks.digital.cac,  fill: '#818cf8', ttfv: data.timeToFirstVisit.digital },
-        { channel: 'Physical', fullCh: 'Physical', cac: data.cac.physical, benchmark: data.industryBenchmarks.physical.cac, fill: '#fb923c', ttfv: data.timeToFirstVisit.physical },
-      ];
 
   return (
     <div className="space-y-4">
@@ -253,49 +228,91 @@ export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilt
         </div>{/* overflow-x-auto wrapper */}
       </div>
 
-      {/* ── CAC chart ────────────────────────────────────────────────── */}
-      {showCac && (
-        <div>
-          <p className="text-[10px] font-bold text-[#4b5563] uppercase tracking-widest mb-2">
-            {showDetailed ? 'CAC per Channel — vs Industry Average' : 'CAC by Channel — vs Industry Average'}
-          </p>
+      {/* ── Cost per Paid Subscriber leaderboard ─────────────────── */}
+      {showCac && (() => {
+        const cpp = data.costPerPaidSub;
+        const industryAvg = cpp.industryAvg;
 
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={cacChartData} barCategoryGap="40%"
-              margin={{ top: 18, right: 72, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
-              <XAxis dataKey="channel" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={v => `₹${(v / 1000).toFixed(0)}K`}
-                tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip content={<CacTooltip />} cursor={{ fill: '#ffffff06' }} />
+        // Build rows depending on mode
+        const rawRows: { label: string; fill: string; cost: number; cac: number; convRate: number; ttfv: number }[] =
+          showDetailed
+            ? subChKeys.map(ch => ({
+                label: CH_LABEL[ch] ?? ch,
+                fill:  CH_COLOR[ch] ?? '#6b7280',
+                ...cpp.byChannel[ch],
+                ttfv: data.timeByChannel[ch] ?? 0,
+              }))
+            : [
+                { label: 'Digital',  fill: '#818cf8', ...cpp.digital,  ttfv: data.timeToFirstVisit.digital  },
+                { label: 'Physical', fill: '#fb923c', ...cpp.physical, ttfv: data.timeToFirstVisit.physical },
+              ];
 
-              <ReferenceLine y={data.industryBenchmarks.digital.cac} stroke="#818cf8" strokeDasharray="4 3"
-                label={{ value: `Dig.avg ₹${data.industryBenchmarks.digital.cac}`, position: 'right', fontSize: 9, fill: '#818cf8' }} />
-              <ReferenceLine y={data.industryBenchmarks.physical.cac} stroke="#fb923c" strokeDasharray="4 3"
-                label={{ value: `Phys.avg ₹${data.industryBenchmarks.physical.cac}`, position: 'right', fontSize: 9, fill: '#fb923c' }} />
+        // Sort cheapest → most expensive
+        const rows = [...rawRows].sort((a, b) => a.cost - b.cost);
+        const blended = cpp.overall.cost;
+        const maxCost = Math.max(...rows.map(r => r.cost), industryAvg) * 1.15;
 
-              <Bar dataKey="cac" name="CAC" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                {cacChartData.map((d, i) => (
-                  <Cell key={i} fill={d.cac <= d.benchmark ? '#10b981' : '#f59e0b'} />
-                ))}
-                <LabelList dataKey="cac" position="inside"
-                  style={{ fill: 'white', fontSize: 11, fontWeight: 700 }}
-                  formatter={(v: unknown) => `₹${Number(v).toLocaleString()}`} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        return (
+          <div>
+            <div className="flex items-baseline gap-2 mb-3">
+              <p className="text-[10px] font-bold text-[#4b5563] uppercase tracking-widest">
+                Cost per Paid Subscriber
+              </p>
+              <p className="text-[10px] text-[#6b7280]">= CAC ÷ Trial→Paid rate — sorted cheapest first</p>
+            </div>
 
-          {/* Time-to-first-visit row */}
-          <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 px-1">
-            {cacChartData.map(d => (
-              <span key={d.channel} className="text-[11px] text-[#6b7280]">
-                <span className="font-semibold" style={{ color: d.fill }}>{d.channel}</span>
-                {' '}— 1st visit in <span className="text-white font-semibold">{d.ttfv}d</span>
+            {/* Horizontal leaderboard */}
+            <div className="space-y-2">
+              {rows.map(r => {
+                const barPct = Math.round((r.cost / maxCost) * 100);
+                const isGood = r.cost <= blended;
+                const barColor = r.cost <= blended ? '#10b981' : r.cost <= industryAvg ? '#f59e0b' : '#ef4444';
+                return (
+                  <div key={r.label} className="group">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[11px] w-16 shrink-0 font-semibold" style={{ color: r.fill }}>
+                        {r.label}
+                      </span>
+                      <div className="flex-1 bg-[#1e1e1e] rounded-full h-5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full flex items-center justify-end pr-2 transition-all"
+                          style={{ width: `${barPct}%`, background: barColor }}
+                        >
+                          <span className="text-[10px] font-bold text-white whitespace-nowrap">
+                            ₹{r.cost.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      {isGood
+                        ? <span className="text-[10px] text-emerald-400 w-16 shrink-0">✓ efficient</span>
+                        : <span className="text-[10px] text-yellow-400 w-16 shrink-0">↑ above avg</span>
+                      }
+                    </div>
+                    {/* Tooltip-style detail on hover */}
+                    <div className="hidden group-hover:flex gap-4 ml-[76px] mt-0.5 text-[10px] text-[#6b7280]">
+                      <span>CAC ₹{r.cac.toLocaleString()}</span>
+                      <span>Conv Rate {r.convRate}%</span>
+                      <span>1st Visit {r.ttfv}d</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Reference lines legend */}
+            <div className="flex gap-5 mt-4 ml-[76px] text-[10px]">
+              <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                <span className="inline-block w-6 border-t-2 border-emerald-500 border-dashed" />
+                Your avg ₹{blended.toLocaleString()}
               </span>
-            ))}
+              <span className="flex items-center gap-1.5 text-[#9ca3af]">
+                <span className="inline-block w-6 border-t-2 border-yellow-500 border-dashed" />
+                Industry avg ₹{industryAvg.toLocaleString()}
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
