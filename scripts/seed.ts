@@ -29,7 +29,7 @@ function pickW<T>(arr: T[], weights: number[]): T {
 function rInt(min: number, max: number) { return min + Math.floor(rng() * (max - min + 1)); }
 
 // ── Reference data ─────────────────────────────────────────────────────────
-const ANCHOR = new Date('2026-04-11T14:47:00Z').getTime();
+const ANCHOR = new Date('2026-04-17T23:59:59Z').getTime();
 
 const MALE_FIRST = ['Aarav','Arjun','Vivek','Rohan','Kiran','Rahul','Suresh','Amit','Vikram','Deepak','Nikhil','Sanjay','Rajesh','Aditya','Prateek','Gaurav','Manish','Abhishek','Ravi','Siddharth','Harish','Pavan','Naveen','Satish','Vinay','Manoj','Dinesh','Ajay','Prakash','Sunil'];
 const FEMALE_FIRST = ['Priya','Ananya','Deepika','Kavya','Shreya','Pooja','Meera','Neha','Divya','Sneha','Sunita','Lakshmi','Rekha','Radha','Nandini','Swathi','Bhavana','Pallavi','Archana','Geeta','Varsha','Rashmi','Usha','Lata','Anjali','Smita','Vandana','Poonam','Preeti','Sonal'];
@@ -214,7 +214,7 @@ const seedAll = db.transaction(() => {
       : rInt(39, 55);
 
     // Join date: uniform over last 90 days
-    const joinedMsAgo = Math.floor(rng() * 90 * 86400000);
+    const joinedMsAgo = Math.floor(rng() * 30 * 86400000); // all users within last 30 days → 50K monthly sign-ups
     const joined_at = isoOffset(joinedMsAgo);
     const joinedTs = ANCHOR - joinedMsAgo;
 
@@ -266,6 +266,37 @@ const seedAll = db.transaction(() => {
 
     const availableWindow = ANCHOR - joinedTs; // ms since join
 
+    // app_install (30 min–4 hours before sign_up — same date window so filter-safe)
+    const installOffset = rInt(30, 240) * 60000; // ms before sign_up
+    evt('app_install', joinedMsAgo + installOffset, 0, {
+      store: os === 'iOS' ? 'App Store' : os === 'Android' ? 'Play Store' : 'Web',
+      app_version: pick(['3.2.1', '3.3.0', '3.3.1', '3.4.0']),
+      install_source: channel,
+    });
+
+    // onboarding_started (2–8 min after install)
+    const obStartOffset = rInt(2, 8) * 60000;
+    evt('onboarding_started', joinedMsAgo + installOffset - obStartOffset, 0, {
+      screen: 'goal_selection',
+      goals_shown: rInt(4, 7),
+    });
+
+    // onboarding_completed (5–15 min after onboarding_started)
+    const obDoneOffset = obStartOffset + rInt(5, 15) * 60000;
+    evt('onboarding_completed', joinedMsAgo + installOffset - obDoneOffset, 0, {
+      goals_selected: rInt(1, 3),
+      fitness_level: pick(['beginner', 'intermediate', 'advanced']),
+      preferred_time: pick(['morning', 'afternoon', 'evening']),
+      onboarding_duration_sec: rInt(120, 480),
+    });
+
+    // sign_up (at join time — after onboarding done)
+    evt('sign_up', joinedMsAgo, 1, {
+      method: pick(['email', 'google', 'phone', 'facebook']),
+      referral_code: channel === 'Referrals' ? `REF${rInt(1000, 9999)}` : null,
+      plan_at_signup: 'free',
+    });
+
     // page_views (3–12)
     const pvCount = rInt(3, 12);
     for (let p = 0; p < pvCount; p++) {
@@ -311,8 +342,10 @@ const seedAll = db.transaction(() => {
     // trial_booked — ~30% of users (to get 600 DB users → 15K displayed)
     const hasTrial = rng() < 0.30;
     if (hasTrial) {
-      const msAgo = Math.floor(rng() * Math.min(availableWindow, 7 * 86400000));
-      evt('trial_booked', msAgo + 3600000, 1, {
+      // Trial happens 1–10 days after sign_up so time-to-first-visit is realistic
+      const daysAfterJoin = rInt(1, 10) * 86400000;
+      const trialMsAgo = Math.max(0, joinedMsAgo - daysAfterJoin);
+      evt('trial_booked', trialMsAgo + 3600000, 1, {
         workout_type: pickW(WORKOUT_TYPES, WORKOUT_W),
         trainer: `Trainer ${rInt(1, 25)}`,
         slot: `${rInt(6, 20)}:00`,
@@ -321,7 +354,7 @@ const seedAll = db.transaction(() => {
 
       // trial_completed — ~53% of trial_booked (to get ~320 DB → 8K displayed)
       if (rng() < 0.53) {
-        evt('trial_completed', msAgo, 1, {
+        evt('trial_completed', trialMsAgo, 1, {
           workout_type: pickW(WORKOUT_TYPES, WORKOUT_W),
           nps_score: rInt(6, 10),
           would_subscribe: rng() < 0.6 ? 'yes' : 'no',

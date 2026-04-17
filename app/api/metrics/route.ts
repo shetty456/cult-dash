@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import db, { SCALE } from '@/lib/db';
 import { parseFilters, jsonResponse } from '@/lib/queryHelpers';
 
-const ANCHOR = '2026-04-11T23:59:59Z';
+const ANCHOR = '2026-04-17T23:59:59Z';
 
 const CHANNEL_CAC: Record<string, number> = {
   'Paid Digital': 1120, 'Organic': 420, 'Referrals': 680, 'Brand/ATL': 890, 'Corporate': 560,

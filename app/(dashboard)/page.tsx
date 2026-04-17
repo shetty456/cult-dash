@@ -10,7 +10,7 @@ const ActiveUsersChart  = dynamic(() => import('@/components/charts/ActiveUsersC
 const NSMTrendChart     = dynamic(() => import('@/components/charts/NSMTrendChart'),     { ssr: false, loading: () => <ChartSkel /> });
 const CACBreakdownChart = dynamic(() => import('@/components/charts/CACBreakdownChart'), { ssr: false, loading: () => <ChartSkel /> });
 const RevenueDetailChart= dynamic(() => import('@/components/charts/RevenueDetailChart'),{ ssr: false, loading: () => <ChartSkel /> });
-const FunnelDetailChart = dynamic(() => import('@/components/charts/FunnelDetailChart'), { ssr: false, loading: () => <ChartSkel /> });
+const AcquisitionFunnelCard = dynamic(() => import('@/components/charts/AcquisitionFunnelCard'), { ssr: false, loading: () => <ChartSkel /> });
 
 function ChartSkel() {
   return <div className="h-[300px] bg-[#1a1a1a] rounded-xl animate-pulse" />;
@@ -144,7 +144,7 @@ export default function OverviewPage() {
         {activeCard === 'wau'        && <ActiveUsersChart   filters={filters} />}
         {activeCard === 'nsm'        && <NSMTrendChart      filters={filters} />}
         {activeCard === 'cac'        && <CACBreakdownChart  filters={filters} />}
-        {activeCard === 'conversion' && <FunnelDetailChart  filters={filters} />}
+        {activeCard === 'conversion' && <AcquisitionFunnelCard filters={filters} />}
         {activeCard === 'revenue'    && <RevenueDetailChart filters={filters} />}
       </div>
 
