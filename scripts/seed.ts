@@ -341,11 +341,13 @@ const seedAll = db.transaction(() => {
 
     // trial_booked — ~30% of users (to get 600 DB users → 15K displayed)
     const hasTrial = rng() < 0.30;
+    let trialMs = 0;
+    let trialed = false;
     if (hasTrial) {
       // Trial happens 1–10 days after sign_up so time-to-first-visit is realistic
       const daysAfterJoin = rInt(1, 10) * 86400000;
-      const trialMsAgo = Math.max(0, joinedMsAgo - daysAfterJoin);
-      evt('trial_booked', trialMsAgo + 3600000, 1, {
+      trialMs = Math.max(0, joinedMsAgo - daysAfterJoin);
+      evt('trial_booked', trialMs + 3600000, 1, {
         workout_type: pickW(WORKOUT_TYPES, WORKOUT_W),
         trainer: `Trainer ${rInt(1, 25)}`,
         slot: `${rInt(6, 20)}:00`,
@@ -354,7 +356,8 @@ const seedAll = db.transaction(() => {
 
       // trial_completed — ~53% of trial_booked (to get ~320 DB → 8K displayed)
       if (rng() < 0.53) {
-        evt('trial_completed', trialMsAgo, 1, {
+        trialed = true;
+        evt('trial_completed', trialMs, 1, {
           workout_type: pickW(WORKOUT_TYPES, WORKOUT_W),
           nps_score: rInt(6, 10),
           would_subscribe: rng() < 0.6 ? 'yes' : 'no',
@@ -414,6 +417,38 @@ const seedAll = db.transaction(() => {
         slot: `${rInt(6, 20)}:00`,
         mode: pick(['in-studio', 'live-online', 'on-demand']),
         price: pick([0, 99, 149, 199]),
+      });
+    }
+
+    // ── Experiment assignments ──────────────────────────────────────────
+    // Variant is deterministic (no rng call) so it doesn't shift downstream seeds
+    const xVariant = i % 2 === 0 ? 'control' : 'treatment';
+
+    // exp_onboarding_video — users who joined 21–30 days ago (concluded 2026-03-27)
+    if (daysSinceJoin >= 21) {
+      evt('experiment_assigned', joinedMsAgo, 0, {
+        experiment_id: 'exp_onboarding_video', variant: xVariant,
+      });
+    }
+
+    // exp_trial_length — trial users who joined in last 21 days (running since 2026-03-27)
+    if (hasTrial && daysSinceJoin < 21) {
+      evt('experiment_assigned', trialMs + 3600000, 1, {
+        experiment_id: 'exp_trial_length', variant: xVariant,
+      });
+    }
+
+    // exp_reminder_channel — trial users who joined in last 14 days (running since 2026-04-04)
+    if (hasTrial && daysSinceJoin < 14) {
+      evt('experiment_assigned', trialMs + 3600000 - 1000, 1, {
+        experiment_id: 'exp_reminder_channel', variant: xVariant,
+      });
+    }
+
+    // exp_pricing_upsell — trial-completed users who joined in last 7 days (running since 2026-04-11)
+    if (trialed && daysSinceJoin < 7) {
+      evt('experiment_assigned', trialMs - 1000, 1, {
+        experiment_id: 'exp_pricing_upsell', variant: xVariant,
       });
     }
   }

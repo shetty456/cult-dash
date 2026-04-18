@@ -11,6 +11,7 @@ const NSMTrendChart     = dynamic(() => import('@/components/charts/NSMTrendChar
 const CACBreakdownChart = dynamic(() => import('@/components/charts/CACBreakdownChart'), { ssr: false, loading: () => <ChartSkel /> });
 const RevenueDetailChart= dynamic(() => import('@/components/charts/RevenueDetailChart'),{ ssr: false, loading: () => <ChartSkel /> });
 const AcquisitionFunnelCard = dynamic(() => import('@/components/charts/AcquisitionFunnelCard'), { ssr: false, loading: () => <ChartSkel /> });
+const ExperimentsCard       = dynamic(() => import('@/components/charts/ExperimentsCard'),       { ssr: false, loading: () => <ChartSkel /> });
 
 function ChartSkel() {
   return <div className="h-[300px] bg-[#1a1a1a] rounded-xl animate-pulse" />;
@@ -147,6 +148,9 @@ export default function OverviewPage() {
         {activeCard === 'conversion' && <AcquisitionFunnelCard filters={filters} />}
         {activeCard === 'revenue'    && <RevenueDetailChart filters={filters} />}
       </div>
+
+      {/* ── Experiment Tracker ── */}
+      <ExperimentsCard />
 
     </div>
   );
