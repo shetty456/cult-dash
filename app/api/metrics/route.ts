@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   // Resolve the current window; fall back to last 30 days relative to ANCHOR
   const to   = f.to   ?? ANCHOR;
-  const from = f.from ?? new Date(new Date(to).getTime() - 30 * 86400000).toISOString();
+  const from = f.from ?? new Date(new Date(to).getTime() - 365 * 86400000).toISOString();
 
   // Prior period of the same length for comparisons
   const durationMs = new Date(to).getTime() - new Date(from).getTime();

@@ -111,7 +111,7 @@ function autoInsight(overall: FunnelRow[], digital: FunnelRow[], physical: Funne
 export async function GET(req: NextRequest) {
   const f    = parseFilters(req.nextUrl.searchParams);
   const to   = f.to   ?? ANCHOR;
-  const from = f.from ?? new Date(new Date(to).getTime() - 30 * 86400000).toISOString();
+  const from = f.from ?? new Date(new Date(to).getTime() - 365 * 86400000).toISOString();
 
   const overall  = buildFunnel(from, to);
   const digital  = buildFunnel(from, to, DIGITAL);

@@ -38,7 +38,7 @@ interface Props {
 }
 
 export default function DateRangePicker({ filters, onChange }: Props) {
-  const [activeKey, setActiveKey] = useState<DateKey>('30d');
+  const [activeKey, setActiveKey] = useState<DateKey>('12m');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo,   setCustomTo]   = useState('');
 

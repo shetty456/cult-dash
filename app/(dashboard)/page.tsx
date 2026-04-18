@@ -38,9 +38,9 @@ function fmtNum(v: number, type: 'rupees' | 'pct' | 'number'): string {
 }
 
 const STATUS_COLORS = {
-  green:  { text: '#10b981', border: 'border-[#10b981]/40', hover: 'hover:border-[#10b981]/70', dot: 'bg-[#10b981]', gradient: 'from-[#064e3b]/20' },
-  yellow: { text: '#f59e0b', border: 'border-[#f59e0b]/30', hover: 'hover:border-[#f59e0b]/60', dot: 'bg-[#f59e0b]', gradient: 'from-[#451a03]/20' },
-  red:    { text: '#ef4444', border: 'border-[#ef4444]/30', hover: 'hover:border-[#ef4444]/60', dot: 'bg-[#ef4444]', gradient: 'from-[#450a0a]/20' },
+  green:  { text: '#10b981', border: 'border-[#10b981]/40', hover: 'hover:border-[#10b981]/80', dot: 'bg-[#10b981]', gradient: 'from-[#064e3b]/35' },
+  yellow: { text: '#f59e0b', border: 'border-[#f59e0b]/40', hover: 'hover:border-[#f59e0b]/80', dot: 'bg-[#f59e0b]', gradient: 'from-[#451a03]/35' },
+  red:    { text: '#ef4444', border: 'border-[#ef4444]/40', hover: 'hover:border-[#ef4444]/80', dot: 'bg-[#ef4444]', gradient: 'from-[#450a0a]/35' },
 };
 
 interface FeaturedCardProps {
@@ -214,12 +214,12 @@ export default function OverviewPage() {
     <div className="px-4 sm:px-6 py-5 space-y-8 pb-8">
 
       {/* ── Business Metrics ── */}
-      <section className="rounded-2xl bg-[#0d1117] border border-[#1e2a1e] p-4 sm:p-5">
+      <section className="rounded-2xl bg-gradient-to-br from-[#0a1f14] to-[#0b0e0b] border border-[#10b981]/20 p-4 sm:p-5">
         <div className="flex items-center gap-3 mb-5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_6px_#10b981]" />
-          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Business Metrics</h2>
-          <div className="flex-1 h-px bg-[#1e2a1e]" />
-          <span className="text-[10px] text-[#4b5563] font-medium">North Star + Revenue</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]" />
+          <h2 className="text-[#10b981] font-bold text-sm tracking-widest uppercase">Business Metrics</h2>
+          <div className="flex-1 h-px bg-[#10b981]/15" />
+          <span className="text-[10px] text-[#10b981]/50 font-semibold tracking-wide">North Star + Revenue</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -258,12 +258,12 @@ export default function OverviewPage() {
       </section>
 
       {/* ── Acquisition Efficiency ── */}
-      <section className="rounded-2xl bg-[#0d1520] border border-[#1a2a40] p-4 sm:p-5">
+      <section className="rounded-2xl bg-gradient-to-br from-[#0a1628] to-[#0b0c0e] border border-[#60a5fa]/20 p-4 sm:p-5">
         <div className="flex items-center gap-3 mb-5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#60a5fa] shadow-[0_0_6px_#60a5fa]" />
-          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Acquisition Efficiency</h2>
-          <div className="flex-1 h-px bg-[#1a2a40]" />
-          <span className="text-[10px] text-[#4b5563] font-medium">CAC + Funnel</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#60a5fa] shadow-[0_0_8px_#60a5fa]" />
+          <h2 className="text-[#60a5fa] font-bold text-sm tracking-widest uppercase">Acquisition Efficiency</h2>
+          <div className="flex-1 h-px bg-[#60a5fa]/15" />
+          <span className="text-[10px] text-[#60a5fa]/50 font-semibold tracking-wide">CAC + Funnel</span>
         </div>
         <div className="grid grid-cols-2 gap-3">
         <MetricCardV2
@@ -294,18 +294,18 @@ export default function OverviewPage() {
       </section>
 
       {/* ── Early Activation Signals ── */}
-      <section className="rounded-2xl bg-[#120d1f] border border-[#2a1a4a] p-4 sm:p-5">
+      <section className="rounded-2xl bg-gradient-to-br from-[#130a22] to-[#0c0b0e] border border-[#a78bfa]/20 p-4 sm:p-5">
         <div className="flex items-center gap-3 mb-5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#a78bfa] shadow-[0_0_6px_#a78bfa]" />
-          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Early Activation Signals</h2>
-          <div className="flex-1 h-px bg-[#2a1a4a]" />
-          <span className="text-[10px] text-[#4b5563] font-medium">Leading indicators — click any card for detail</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#a78bfa] shadow-[0_0_8px_#a78bfa]" />
+          <h2 className="text-[#a78bfa] font-bold text-sm tracking-widest uppercase">Early Activation Signals</h2>
+          <div className="flex-1 h-px bg-[#a78bfa]/15" />
+          <span className="text-[10px] text-[#a78bfa]/50 font-semibold tracking-wide">Leading indicators — click any card</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
 
           {/* Card 1 — % 1st workout within 48h */}
           <article onClick={() => setActivationView('48h')}
-            className="bg-[#161616] border border-[#7c3aed]/30 hover:border-[#7c3aed]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            className="bg-gradient-to-br from-[#1a0f2e] to-[#111018] border border-[#7c3aed]/40 hover:border-[#a78bfa]/70 rounded-xl p-4 cursor-pointer transition-all group shadow-[inset_0_1px_0_#a78bfa18]">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#a78bfa]" />
               <span className="text-[9px] font-bold text-[#a78bfa] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
@@ -323,7 +323,7 @@ export default function OverviewPage() {
 
           {/* Card 2 — % ≥2 workouts in week 1 */}
           <article onClick={() => setActivationView('week1')}
-            className="bg-[#161616] border border-[#10b981]/30 hover:border-[#10b981]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            className="bg-gradient-to-br from-[#0a1f16] to-[#0e1210] border border-[#10b981]/40 hover:border-[#10b981]/70 rounded-xl p-4 cursor-pointer transition-all group shadow-[inset_0_1px_0_#10b98118]">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#10b981]" />
               <span className="text-[9px] font-bold text-[#10b981] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
@@ -341,7 +341,7 @@ export default function OverviewPage() {
 
           {/* Card 3 — Median days to 2nd workout */}
           <article onClick={() => setActivationView('timeToSecond')}
-            className="bg-[#161616] border border-[#60a5fa]/30 hover:border-[#60a5fa]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            className="bg-gradient-to-br from-[#0a1526] to-[#0d1014] border border-[#60a5fa]/40 hover:border-[#60a5fa]/70 rounded-xl p-4 cursor-pointer transition-all group shadow-[inset_0_1px_0_#60a5fa18]">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#60a5fa]" />
               <span className="text-[9px] font-bold text-[#60a5fa] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
@@ -361,7 +361,7 @@ export default function OverviewPage() {
 
           {/* Card 4 — % never activated (0 workouts week 1) */}
           <article onClick={() => setActivationView('neverActivated')}
-            className="bg-[#161616] border border-[#ef4444]/30 hover:border-[#ef4444]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            className="bg-gradient-to-br from-[#200e0e] to-[#130d0d] border border-[#ef4444]/40 hover:border-[#ef4444]/70 rounded-xl p-4 cursor-pointer transition-all group shadow-[inset_0_1px_0_#ef444418]">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
               <span className="text-[9px] font-bold text-[#ef4444] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
@@ -383,12 +383,12 @@ export default function OverviewPage() {
       </section>
 
       {/* ── Experiment Tracker ── */}
-      <section className="rounded-2xl bg-[#0f110d] border border-[#1e2a18] p-4 sm:p-5">
+      <section className="rounded-2xl bg-gradient-to-br from-[#091a12] to-[#0b0c0b] border border-[#34d399]/20 p-4 sm:p-5">
         <div className="flex items-center gap-3 mb-5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#34d399] shadow-[0_0_6px_#34d399]" />
-          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Experiment Tracker</h2>
-          <div className="flex-1 h-px bg-[#1e2a18]" />
-          <span className="text-[10px] text-[#4b5563] font-medium">A/B tests tied to activation goals</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#34d399] shadow-[0_0_8px_#34d399]" />
+          <h2 className="text-[#34d399] font-bold text-sm tracking-widest uppercase">Experiment Tracker</h2>
+          <div className="flex-1 h-px bg-[#34d399]/15" />
+          <span className="text-[10px] text-[#34d399]/50 font-semibold tracking-wide">A/B tests tied to activation goals</span>
         </div>
         <ExperimentsCard />
       </section>

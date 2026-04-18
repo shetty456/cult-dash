@@ -17,14 +17,14 @@ const FilterContext = createContext<FilterContextType>({
   setProfileUserId: () => {},
 });
 
-function default30D(): GlobalFilters {
+function default12M(): GlobalFilters {
   const to   = new Date();
-  const from = new Date(to.getTime() - 30 * 86400000);
+  const from = new Date(to.getTime() - 365 * 86400000);
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
 export function FilterProvider({ children }: { children: ReactNode }) {
-  const [filters, setFilters] = useState<GlobalFilters>(default30D);
+  const [filters, setFilters] = useState<GlobalFilters>(default12M);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   return (
     <FilterContext.Provider value={{ filters, setFilters, profileUserId, setProfileUserId }}>

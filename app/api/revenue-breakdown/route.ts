@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const { clause, params } = joinedWhere(f);
 
   const to   = f.to   ?? ANCHOR;
-  const from = f.from ?? new Date(new Date(to).getTime() - 30 * 86400000).toISOString();
+  const from = f.from ?? new Date(new Date(to).getTime() - 365 * 86400000).toISOString();
 
   // ── Weekly MRR trend ─────────────────────────────────────────────────────
   // Cumulative MRR: for each week, sum MRR of all paid users who subscribed up to that week
