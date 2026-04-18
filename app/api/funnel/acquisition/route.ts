@@ -48,14 +48,15 @@ function countWorkoutMin(minCount: number, from: string, to: string, channels?: 
 }
 
 function buildFunnel(from: string, to: string, channels?: string[]): FunnelRow[] {
+  // Strictly sequential path — each stage is a subset of the one above:
+  // Install → Sign-up → Trial Booked → Class Booked → Paid Subscription
+  // Workout stages removed: workout counts exceed trial counts (not sequential)
   const raw = [
-    { stage: 'Install',                  count: countEvent('app_install',            from, to, channels) * SCALE },
-    { stage: 'Sign-up',                  count: countEvent('sign_up',                from, to, channels) * SCALE },
-    { stage: 'Trial Activated',          count: countEvent('trial_booked',           from, to, channels) * SCALE },
-    { stage: 'Class Booked',             count: countEvent('class_booked',           from, to, channels) * SCALE },
-    { stage: 'First Workout Completed',  count: countWorkoutMin(1, from, to, channels) * SCALE },
-    { stage: 'Second Workout',           count: countWorkoutMin(2, from, to, channels) * SCALE },
-    { stage: 'Paid Subscription',        count: countEvent('subscription_purchased', from, to, channels) * SCALE },
+    { stage: 'Install',          count: countEvent('app_install',            from, to, channels) * SCALE },
+    { stage: 'Sign-up',          count: countEvent('sign_up',                from, to, channels) * SCALE },
+    { stage: 'Trial Booked',     count: countEvent('trial_booked',           from, to, channels) * SCALE },
+    { stage: 'Class Booked',     count: countEvent('class_booked',           from, to, channels) * SCALE },
+    { stage: 'Paid Subscription',count: countEvent('subscription_purchased', from, to, channels) * SCALE },
   ];
   const top = raw[0].count || 1;
   return raw.map((s, i, arr) => ({
@@ -66,8 +67,8 @@ function buildFunnel(from: string, to: string, channels?: string[]): FunnelRow[]
 }
 
 function costPerPaid(funnel: FunnelRow[], cac: number) {
-  const trial    = funnel[2]?.count ?? 0;  // Trial Activated
-  const paid     = funnel[6]?.count ?? 0;  // Paid Subscription
+  const trial    = funnel[2]?.count ?? 0;  // Trial Booked
+  const paid     = funnel[4]?.count ?? 0;  // Paid Subscription
   const convRate = trial > 0 ? paid / trial : 0;
   return {
     cost:     convRate > 0 ? Math.round(cac / convRate) : 0,
@@ -90,8 +91,8 @@ function autoInsight(overall: FunnelRow[], digital: FunnelRow[], physical: Funne
   // Biggest absolute drop in the funnel
   const leak = [...overall].filter(s => s.dropPct > 0).sort((a, b) => b.dropPct - a.dropPct)[0];
   // Trial → Paid comparison across channels
-  const dConv = digital[6].count  / Math.max(1, digital[2].count)  * 100;
-  const pConv = physical[6].count / Math.max(1, physical[2].count) * 100;
+  const dConv = digital[4].count  / Math.max(1, digital[2].count)  * 100;
+  const pConv = physical[4].count / Math.max(1, physical[2].count) * 100;
 
   if (Math.abs(dConv - pConv) > 5) {
     const better = dConv > pConv ? 'Digital' : 'Physical';
