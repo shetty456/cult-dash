@@ -98,12 +98,12 @@ export async function GET(req: NextRequest) {
 
   type PlanRow = { plan: string; mrr: number; users: number };
   const planRows = db.prepare(`
-    SELECT plan,
+    SELECT u.plan,
            SUM(${MRR_EXPR}) * ${SCALE} as mrr,
            COUNT(*) as users
-    FROM users
-    WHERE plan != 'free'
-    GROUP BY plan
+    FROM users u
+    WHERE u.plan != 'free'
+    GROUP BY u.plan
     ORDER BY mrr DESC
   `).all() as PlanRow[];
 
