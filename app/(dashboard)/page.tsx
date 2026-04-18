@@ -168,7 +168,7 @@ export default function OverviewPage() {
 
   const [modalCard, setModalCard]         = useState<CardId | null>(null);
   const [activationView, setActivationView] = useState<EarlyActivationView | null>(null);
-  const [activationSummary, setActivationSummary]     = useState<{pct48h:number;pctTwoWeek1:number;medianDaysToSecond:number|null} | null>(null);
+  const [activationSummary, setActivationSummary]     = useState<{pct48h:number;pctTwoWeek1:number;medianDaysToSecond:number|null;zeroWorkoutPct:number} | null>(null);
   const [metrics, setMetrics]             = useState<MetricsData | null>(null);
   const [convRate, setConvRate]     = useState(0);
   const [sparklines, setSparklines] = useState<Record<CardId, number[]>>({
@@ -211,13 +211,15 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="px-4 sm:px-6 py-5 space-y-6 pb-8">
+    <div className="px-4 sm:px-6 py-5 space-y-8 pb-8">
 
       {/* ── Business Metrics ── */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-white font-semibold text-base tracking-tight">Business Metrics</h2>
-          <div className="flex-1 h-px bg-[#2a2a2a]" />
+      <section className="rounded-2xl bg-[#0d1117] border border-[#1e2a1e] p-4 sm:p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_6px_#10b981]" />
+          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Business Metrics</h2>
+          <div className="flex-1 h-px bg-[#1e2a1e]" />
+          <span className="text-[10px] text-[#4b5563] font-medium">North Star + Revenue</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -256,12 +258,14 @@ export default function OverviewPage() {
       </section>
 
       {/* ── Acquisition Efficiency ── */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-white font-semibold text-base tracking-tight">Acquisition Efficiency</h2>
-          <div className="flex-1 h-px bg-[#2a2a2a]" />
+      <section className="rounded-2xl bg-[#0d1520] border border-[#1a2a40] p-4 sm:p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#60a5fa] shadow-[0_0_6px_#60a5fa]" />
+          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Acquisition Efficiency</h2>
+          <div className="flex-1 h-px bg-[#1a2a40]" />
+          <span className="text-[10px] text-[#4b5563] font-medium">CAC + Funnel</span>
         </div>
-      <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
         <MetricCardV2
           id="cac"
           label="Blended CAC"
@@ -286,14 +290,16 @@ export default function OverviewPage() {
           isActive={false}
           onClick={() => setModalCard('conversion')}
         />
-      </div>
+        </div>
       </section>
 
       {/* ── Early Activation Signals ── */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-white font-semibold text-base tracking-tight">Early Activation Signals</h2>
-          <div className="flex-1 h-px bg-[#2a2a2a]" />
+      <section className="rounded-2xl bg-[#120d1f] border border-[#2a1a4a] p-4 sm:p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#a78bfa] shadow-[0_0_6px_#a78bfa]" />
+          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Early Activation Signals</h2>
+          <div className="flex-1 h-px bg-[#2a1a4a]" />
+          <span className="text-[10px] text-[#4b5563] font-medium">Leading indicators — click any card for detail</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
 
@@ -362,11 +368,13 @@ export default function OverviewPage() {
             </div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] mb-2">0 Workouts in Week 1</p>
             <p className="text-3xl font-bold text-[#ef4444]">
-              {activationSummary ? `${(100 - activationSummary.pct48h).toFixed(1)}%` : '—'}
+              {activationSummary ? `${activationSummary.zeroWorkoutPct}%` : '—'}
             </p>
             <p className="text-[11px] text-[#4b5563] mt-2 leading-relaxed">
               {activationSummary
-                ? `${(100 - activationSummary.pct48h).toFixed(0)}% of sign-ups never complete even one workout — your biggest retention leak.`
+                ? activationSummary.zeroWorkoutPct >= 40
+                  ? `${activationSummary.zeroWorkoutPct}% of sign-ups never complete a workout in week 1 — biggest retention leak.`
+                  : `${activationSummary.zeroWorkoutPct}% never activated in week 1. Guided slot booking can cut this further.`
                 : 'Users who sign up but complete zero workouts in their first 7 days.'}
             </p>
           </article>
@@ -375,7 +383,15 @@ export default function OverviewPage() {
       </section>
 
       {/* ── Experiment Tracker ── */}
-      <ExperimentsCard />
+      <section className="rounded-2xl bg-[#0f110d] border border-[#1e2a18] p-4 sm:p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#34d399] shadow-[0_0_6px_#34d399]" />
+          <h2 className="text-white font-bold text-sm tracking-tight uppercase">Experiment Tracker</h2>
+          <div className="flex-1 h-px bg-[#1e2a18]" />
+          <span className="text-[10px] text-[#4b5563] font-medium">A/B tests tied to activation goals</span>
+        </div>
+        <ExperimentsCard />
+      </section>
 
       {/* ── Chart modal ── */}
       {modalCard && (

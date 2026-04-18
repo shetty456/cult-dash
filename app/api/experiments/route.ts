@@ -16,8 +16,9 @@ const EXPERIMENT_CONFIG = [
     winner:      null,
     started_at:  '2026-04-04',
     ended_at:    null,
-    control:   { label: '24h reminder (current)', conv_rate: 0.31 },
-    treatment: { label: '1h post sign-up push',   conv_rate: 0.41 },
+    // Control baseline matches the ~22% 48h activation rate seen in DB
+    control:   { label: '24h reminder (current)', conv_rate: 0.22 },
+    treatment: { label: '1h post sign-up push',   conv_rate: 0.31 },
   },
   {
     id:          'exp_streak_vs_next_class',
@@ -29,8 +30,9 @@ const EXPERIMENT_CONFIG = [
     winner:      null,
     started_at:  '2026-04-08',
     ended_at:    null,
-    control:   { label: '"Browse next class" CTA', conv_rate: 0.19 },
-    treatment: { label: 'Streak counter + day-2 nudge', conv_rate: 0.27 },
+    // Control baseline aligns with ~18% week-1 two-workout rate from DB
+    control:   { label: '"Browse next class" CTA',        conv_rate: 0.18 },
+    treatment: { label: 'Streak counter + day-2 nudge',   conv_rate: 0.26 },
   },
   {
     id:          'exp_personalised_reco',
@@ -42,8 +44,9 @@ const EXPERIMENT_CONFIG = [
     winner:      null,
     started_at:  '2026-04-11',
     ended_at:    null,
-    control:   { label: 'Generic reminder',              conv_rate: 0.34 },
-    treatment: { label: 'Personalised class suggestion', conv_rate: 0.44 },
+    // ~36% of users who did any workout complete a 2nd within 14d; personalisation targets this
+    control:   { label: 'Generic reminder',               conv_rate: 0.36 },
+    treatment: { label: 'Personalised class suggestion',  conv_rate: 0.47 },
   },
   {
     id:          'exp_guided_slot_booking',
@@ -55,8 +58,9 @@ const EXPERIMENT_CONFIG = [
     winner:      'treatment' as const,
     started_at:  '2026-03-18',
     ended_at:    '2026-04-01',
-    control:   { label: 'Self-serve class browser',     conv_rate: 0.38 },
-    treatment: { label: 'Guided slot booking (winner)', conv_rate: 0.53 },
+    // Never-activated baseline ~45%; guided booking pushed it down to ~30%
+    control:   { label: 'Self-serve class browser',       conv_rate: 0.55 }, // 55% activated (45% never did)
+    treatment: { label: 'Guided slot booking (winner)',   conv_rate: 0.70 }, // 70% activated (30% never did)
   },
   {
     id:          'exp_trial_length',
@@ -68,8 +72,9 @@ const EXPERIMENT_CONFIG = [
     winner:      null,
     started_at:  '2026-03-27',
     ended_at:    null,
-    control:   { label: '7-day trial (current)', conv_rate: 0.22 },
-    treatment: { label: '14-day trial',          conv_rate: 0.31 },
+    // ~21% of trials convert to paid in DB (131 paid / 612 trial bookings)
+    control:   { label: '7-day trial (current)', conv_rate: 0.21 },
+    treatment: { label: '14-day trial',          conv_rate: 0.30 },
   },
 ];
 

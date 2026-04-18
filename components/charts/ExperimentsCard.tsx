@@ -210,13 +210,9 @@ export default function ExperimentsCard() {
   const concluded = data.filter(e => e.status === 'concluded').length;
 
   return (
-    <div className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 sm:p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-sm font-semibold text-white">Experiment Tracker</p>
-          <p className="text-[11px] text-[#6b7280] mt-0.5">Each test is linked to a leading activation metric — click to expand</p>
-        </div>
-        <span className="text-[10px] font-semibold text-[#9ca3af] bg-[#1e1e1e] border border-[#3a3a3a] px-2.5 py-1 rounded-full shrink-0">
+    <div>
+      <div className="flex items-center justify-end mb-3">
+        <span className="text-[10px] font-semibold text-[#9ca3af] bg-[#1e1e1e] border border-[#3a3a3a] px-2.5 py-1 rounded-full">
           {running} running · {concluded} concluded
         </span>
       </div>

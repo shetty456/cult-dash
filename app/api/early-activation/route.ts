@@ -177,12 +177,20 @@ export async function GET(req: NextRequest) {
     pctTwoWeek1:  r.cohort > 0 ? Math.round((r.twoWeek1 / r.cohort) * 1000) / 10 : 0,
   }));
 
+  const zeroWorkoutPct = (() => {
+    const zeroRow = distRaw.find(r => r.bucket === '0');
+    return distTotal > 0 && zeroRow
+      ? Math.round((zeroRow.users / distTotal) * 1000) / 10
+      : 0;
+  })();
+
   return jsonResponse({
     summary: {
       cohortSize:         cohortSize * SCALE,
       pct48h,
       pctTwoWeek1,
       medianDaysToSecond,
+      zeroWorkoutPct,
     },
     trend,
     week1Distribution,
