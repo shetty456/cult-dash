@@ -13,6 +13,7 @@ const CACBreakdownChart     = dynamic(() => import('@/components/charts/CACBreak
 const RevenueDetailChart    = dynamic(() => import('@/components/charts/RevenueDetailChart'),    { ssr: false, loading: () => <ChartSkel /> });
 const AcquisitionFunnelCard = dynamic(() => import('@/components/charts/AcquisitionFunnelCard'), { ssr: false, loading: () => <ChartSkel /> });
 const ExperimentsCard       = dynamic(() => import('@/components/charts/ExperimentsCard'),       { ssr: false, loading: () => <ChartSkel /> });
+const EarlyActivationCard   = dynamic(() => import('@/components/charts/EarlyActivationCard'),   { ssr: false, loading: () => <ChartSkel /> });
 const SparklineLarge        = dynamic(() => import('@/components/SparklineMini'),                { ssr: false, loading: () => <div className="h-full w-full" /> });
 
 function ChartSkel() {
@@ -164,8 +165,10 @@ export default function OverviewPage() {
   const { filters } = useFilters();
   const filterKey = JSON.stringify(filters);
 
-  const [modalCard, setModalCard]   = useState<CardId | null>(null);
-  const [metrics, setMetrics]       = useState<MetricsData | null>(null);
+  const [modalCard, setModalCard]         = useState<CardId | null>(null);
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activationSummary, setActivationSummary]     = useState<{pct48h:number;pctTwoWeek1:number;medianDaysToSecond:number|null} | null>(null);
+  const [metrics, setMetrics]             = useState<MetricsData | null>(null);
   const [convRate, setConvRate]     = useState(0);
   const [sparklines, setSparklines] = useState<Record<CardId, number[]>>({
     wau: [], nsm: [], cac: [], conversion: [], revenue: [],
@@ -179,7 +182,9 @@ export default function OverviewPage() {
       fetch(`/api/wau?${qs}`).then(r => r.json()),
       fetch(`/api/nsm?${qs}`).then(r => r.json()),
       fetch(`/api/revenue?${qs}`).then(r => r.json()),
-    ]).then(([m, funnel, wauData, nsmData, revData]) => {
+      fetch(`/api/early-activation?${qs}`).then(r => r.json()),
+    ]).then(([m, funnel, wauData, nsmData, revData, activation]) => {
+      if (activation?.summary) setActivationSummary(activation.summary);
       setMetrics(m);
 
       const stages = Array.isArray(funnel) ? funnel : [];
@@ -283,6 +288,36 @@ export default function OverviewPage() {
       </div>
       </section>
 
+      {/* ── Early Activation Signals ── */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-white font-semibold text-base tracking-tight">Early Activation Signals</h2>
+          <div className="flex-1 h-px bg-[#2a2a2a]" />
+        </div>
+        <div
+          onClick={() => setShowActivationModal(true)}
+          className="bg-[#161616] border border-[#2a2a2a] hover:border-[#7c3aed]/50 rounded-xl p-4 sm:p-5 cursor-pointer transition-colors group"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-[#6b7280] uppercase tracking-wider font-semibold">Sign-up cohort · last 30 days</p>
+            <span className="text-[10px] text-[#a78bfa] bg-[#a78bfa]/10 px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">View details →</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: '1st workout ≤48h',   value: activationSummary ? `${activationSummary.pct48h}%`          : '—', color: '#a78bfa' },
+              { label: '≥2 workouts week 1',  value: activationSummary ? `${activationSummary.pctTwoWeek1}%`     : '—', color: '#10b981' },
+              { label: 'Median days → 2nd',   value: activationSummary ? `${activationSummary.medianDaysToSecond ?? '—'} days` : '—', color: '#60a5fa' },
+              { label: 'Never activated',      value: activationSummary ? `${(100 - activationSummary.pctTwoWeek1 - activationSummary.pct48h / 2).toFixed(0)}%` : '—', color: '#ef4444' },
+            ].map(s => (
+              <div key={s.label} className="bg-[#1a1a1a] rounded-lg px-3 py-2.5">
+                <p className="text-[10px] text-[#6b7280] mb-1">{s.label}</p>
+                <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Experiment Tracker ── */}
       <ExperimentsCard />
 
@@ -293,6 +328,26 @@ export default function OverviewPage() {
           filters={filters as Record<string, string>}
           onClose={() => setModalCard(null)}
         />
+      )}
+
+      {/* ── Early Activation modal ── */}
+      {showActivationModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setShowActivationModal(false)} />
+          <div className="relative z-10 w-full max-w-5xl bg-[#161616] border border-[#2a2a2a] rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-4 bg-[#161616] border-b border-[#2a2a2a]">
+              <h2 className="text-white font-semibold text-base sm:text-lg">Early Activation Signals</h2>
+              <button onClick={() => setShowActivationModal(false)}
+                className="w-8 h-8 rounded-full bg-[#2a2a2a] hover:bg-[#3a3a3a] flex items-center justify-center transition-colors text-[#6b7280] hover:text-white text-sm">
+                ✕
+              </button>
+            </div>
+            <div className="p-5 sm:p-6">
+              <EarlyActivationCard filters={filters} />
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
