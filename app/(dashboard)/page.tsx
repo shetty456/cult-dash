@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
+import { EarlyActivationView } from '@/components/charts/EarlyActivationCard';
 import { CardId } from '@/components/MetricCardV2';
 import MetricCardV2 from '@/components/MetricCardV2';
 import { useFilters } from '@/lib/FilterContext';
@@ -166,7 +167,7 @@ export default function OverviewPage() {
   const filterKey = JSON.stringify(filters);
 
   const [modalCard, setModalCard]         = useState<CardId | null>(null);
-  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activationView, setActivationView] = useState<EarlyActivationView | null>(null);
   const [activationSummary, setActivationSummary]     = useState<{pct48h:number;pctTwoWeek1:number;medianDaysToSecond:number|null} | null>(null);
   const [metrics, setMetrics]             = useState<MetricsData | null>(null);
   const [convRate, setConvRate]     = useState(0);
@@ -297,7 +298,7 @@ export default function OverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
 
           {/* Card 1 — % 1st workout within 48h */}
-          <article onClick={() => setShowActivationModal(true)}
+          <article onClick={() => setActivationView('48h')}
             className="bg-[#161616] border border-[#7c3aed]/30 hover:border-[#7c3aed]/70 rounded-xl p-4 cursor-pointer transition-all group">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#a78bfa]" />
@@ -315,7 +316,7 @@ export default function OverviewPage() {
           </article>
 
           {/* Card 2 — % ≥2 workouts in week 1 */}
-          <article onClick={() => setShowActivationModal(true)}
+          <article onClick={() => setActivationView('week1')}
             className="bg-[#161616] border border-[#10b981]/30 hover:border-[#10b981]/70 rounded-xl p-4 cursor-pointer transition-all group">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#10b981]" />
@@ -333,7 +334,7 @@ export default function OverviewPage() {
           </article>
 
           {/* Card 3 — Median days to 2nd workout */}
-          <article onClick={() => setShowActivationModal(true)}
+          <article onClick={() => setActivationView('timeToSecond')}
             className="bg-[#161616] border border-[#60a5fa]/30 hover:border-[#60a5fa]/70 rounded-xl p-4 cursor-pointer transition-all group">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#60a5fa]" />
@@ -353,7 +354,7 @@ export default function OverviewPage() {
           </article>
 
           {/* Card 4 — % never activated (0 workouts week 1) */}
-          <article onClick={() => setShowActivationModal(true)}
+          <article onClick={() => setActivationView('neverActivated')}
             className="bg-[#161616] border border-[#ef4444]/30 hover:border-[#ef4444]/70 rounded-xl p-4 cursor-pointer transition-all group">
             <div className="flex items-center justify-between mb-3">
               <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
@@ -385,20 +386,25 @@ export default function OverviewPage() {
         />
       )}
 
-      {/* ── Early Activation modal ── */}
-      {showActivationModal && createPortal(
+      {/* ── Early Activation modals (one per card) ── */}
+      {activationView && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setShowActivationModal(false)} />
-          <div className="relative z-10 w-full max-w-5xl bg-[#161616] border border-[#2a2a2a] rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setActivationView(null)} />
+          <div className="relative z-10 w-full max-w-3xl bg-[#161616] border border-[#2a2a2a] rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-4 bg-[#161616] border-b border-[#2a2a2a]">
-              <h2 className="text-white font-semibold text-base sm:text-lg">Early Activation Signals</h2>
-              <button onClick={() => setShowActivationModal(false)}
+              <h2 className="text-white font-semibold text-base sm:text-lg">
+                {activationView === '48h'          && '1st Workout Within 48h'}
+                {activationView === 'week1'        && '≥2 Workouts in Week 1'}
+                {activationView === 'timeToSecond' && 'Time to 2nd Workout'}
+                {activationView === 'neverActivated' && '0 Workouts in Week 1'}
+              </h2>
+              <button onClick={() => setActivationView(null)}
                 className="w-8 h-8 rounded-full bg-[#2a2a2a] hover:bg-[#3a3a3a] flex items-center justify-center transition-colors text-[#6b7280] hover:text-white text-sm">
                 ✕
               </button>
             </div>
             <div className="p-5 sm:p-6">
-              <EarlyActivationCard filters={filters} />
+              <EarlyActivationCard filters={filters} view={activationView} />
             </div>
           </div>
         </div>,
