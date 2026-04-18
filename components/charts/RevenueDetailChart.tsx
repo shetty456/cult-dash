@@ -9,6 +9,7 @@ import { GlobalFilters } from '@/lib/queryHelpers';
 
 interface TrendRow  { week: string; mrr: number; }
 interface FreqRow   { bucket: string; label: string; mrr: number; users: number; pct: number; color: string; }
+interface PlanRow   { plan: string; mrr: number; users: number; pct: number; color: string; }
 
 function fmtRev(v: number): string {
   if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)}Cr`;
@@ -46,6 +47,7 @@ function DonutLabel({ cx, cy, midAngle, innerRadius, outerRadius, pct }: {
 export default function RevenueDetailChart({ filters }: { filters: GlobalFilters }) {
   const [trend, setTrend]           = useState<TrendRow[]>([]);
   const [byFreq, setByFreq]         = useState<FreqRow[]>([]);
+  const [byPlan, setByPlan]         = useState<PlanRow[]>([]);
   const [currentMrr, setCurrentMrr] = useState(0);
   const [mrrGrowth, setMrrGrowth]   = useState(0);
   const [loading, setLoading]       = useState(true);
@@ -60,6 +62,7 @@ export default function RevenueDetailChart({ filters }: { filters: GlobalFilters
       .then(d => {
         setTrend(d.trend ?? []);
         setByFreq(d.byFrequency ?? []);
+        setByPlan(d.byPlan ?? []);
         setCurrentMrr(d.currentMrr ?? 0);
         setMrrGrowth(d.mrrGrowth ?? 0);
         setLoading(false);
@@ -198,7 +201,7 @@ export default function RevenueDetailChart({ filters }: { filters: GlobalFilters
             </PieChart>
           </ResponsiveContainer>
 
-          {/* Legend with MRR values */}
+          {/* Frequency legend */}
           <div className="space-y-1.5 mt-1">
             {byFreq.map(r => (
               <div key={r.bucket} className="flex items-center justify-between text-xs">
@@ -213,6 +216,36 @@ export default function RevenueDetailChart({ filters }: { filters: GlobalFilters
               </div>
             ))}
           </div>
+
+          {/* Plan type breakdown */}
+          {byPlan.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[#2a2a2a]">
+              <p className="text-[10px] font-semibold text-[#6b7280] uppercase tracking-wider mb-2">By plan type</p>
+
+              {/* Stacked bar */}
+              <div className="flex rounded-full overflow-hidden h-2 mb-3">
+                {byPlan.map(r => (
+                  <div key={r.plan} style={{ width: `${r.pct}%`, background: r.color }} />
+                ))}
+              </div>
+
+              <div className="space-y-1.5">
+                {byPlan.map(r => (
+                  <div key={r.plan} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: r.color }} />
+                      <span className="text-[#9ca3af]">{r.plan}</span>
+                      <span className="text-[#4b5563]">{r.pct}%</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[#6b7280]">{r.users.toLocaleString()} users</span>
+                      <span className="text-white font-semibold tabular-nums">{fmtRev(r.mrr)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

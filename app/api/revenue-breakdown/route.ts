@@ -91,5 +91,30 @@ export async function GET(req: NextRequest) {
     color:  BUCKET_META[r.bucket]?.color ?? '#6b7280',
   }));
 
-  return jsonResponse({ trend, byFrequency, currentMrr, mrrGrowth });
+  // ── MRR by plan type ─────────────────────────────────────────────────────
+  const PLAN_COLORS: Record<string, string> = {
+    monthly: '#60a5fa', quarterly: '#a78bfa', annual: '#f59e0b',
+  };
+
+  type PlanRow = { plan: string; mrr: number; users: number };
+  const planRows = db.prepare(`
+    SELECT plan,
+           SUM(${MRR_EXPR}) * ${SCALE} as mrr,
+           COUNT(*) as users
+    FROM users
+    WHERE plan != 'free'
+    GROUP BY plan
+    ORDER BY mrr DESC
+  `).all() as PlanRow[];
+
+  const totalPlanMrr = planRows.reduce((s, r) => s + r.mrr, 0);
+  const byPlan = planRows.map(r => ({
+    plan:  r.plan.charAt(0).toUpperCase() + r.plan.slice(1),
+    mrr:   Math.round(r.mrr),
+    users: r.users,
+    pct:   totalPlanMrr > 0 ? Math.round((r.mrr / totalPlanMrr) * 100) : 0,
+    color: PLAN_COLORS[r.plan] ?? '#6b7280',
+  }));
+
+  return jsonResponse({ trend, byFrequency, byPlan, currentMrr, mrrGrowth });
 }
