@@ -1,89 +1,130 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, LabelList, Legend,
-} from 'recharts';
 import { GlobalFilters } from '@/lib/queryHelpers';
 
 interface FunnelRow { stage: string; count: number; pct: number; dropPct: number; }
-interface CostEntry { cost: number; cac: number; convRate: number; }
 interface AcquisitionData {
-  overall:  FunnelRow[];
-  digital:  FunnelRow[];
-  physical: FunnelRow[];
+  overall:     FunnelRow[];
+  digital:     FunnelRow[];
+  physical:    FunnelRow[];
   subChannels: Record<string, FunnelRow[]>;
-  cac: { digital: number; physical: number };
-  cacByChannel: Record<string, number>;
-  costPerPaidSub: {
-    overall: CostEntry; digital: CostEntry; physical: CostEntry;
-    byChannel: Record<string, CostEntry>;
-    industryAvg: number;
-  };
-  insight: string;
+  insight:     string;
 }
 
-const CH_LABEL: Record<string, string> = {
-  'Paid Digital': 'Paid Dig.', 'Organic': 'Organic',
-  'Referrals': 'Referral',    'Brand/ATL': 'Brand', 'Corporate': 'Corp.',
-};
 const CH_COLOR: Record<string, string> = {
   'Paid Digital': '#818cf8', 'Organic': '#34d399',
-  'Referrals': '#f59e0b',   'Brand/ATL': '#f472b6', 'Corporate': '#38bdf8',
-};
-const CH_GROUP: Record<string, string> = {
-  'Paid Digital': 'Digital', 'Organic': 'Digital',
-  'Referrals': 'Physical',  'Brand/ATL': 'Physical', 'Corporate': 'Physical',
+  'Referrals':    '#f59e0b', 'Brand/ATL': '#f472b6', 'Corporate': '#38bdf8',
 };
 
-// Short axis labels for each stage
-const STAGE_SHORT: Record<string, string> = {
-  'Install':               'Install',
-  'Sign-up':               'Sign-up',
-  'Trial Activated':       'Trial',
-  'Class Booked':          'Class',
-  'First Workout Completed': '1st Workout',
-  'Second Workout':        '2nd Workout',
-  'Paid Subscription':     'Paid',
+const STAGE_DEF: Record<string, string> = {
+  'Install':                 'app_install event',
+  'Sign-up':                 'sign_up event',
+  'Trial Activated':         'trial_booked event',
+  'Class Booked':            'class_booked event',
+  'First Workout Completed': '≥1 workout_completed',
+  'Second Workout':          '≥2 workout_completed',
+  'Paid Subscription':       'subscription_purchased',
 };
+
+// Stage accent colours — progresses green → teal → blue → purple
+const STAGE_COLOR = [
+  '#34d399', '#10b981', '#2dd4bf', '#60a5fa', '#818cf8', '#a78bfa', '#c084fc',
+];
 
 function fmt(n: number) {
-  if (n >= 500000) return `${(n / 100000).toFixed(0)}L`;
-  if (n >= 100000) return `${(n / 100000).toFixed(1)}L`;
-  if (n >= 1000)   return `${(n / 1000).toFixed(0)}K`;
-  return String(n);
+  if (n >= 10000000) return `${(n / 10000000).toFixed(1)}Cr`;
+  if (n >= 100000)   return `${(n / 100000).toFixed(1)}L`;
+  if (n >= 1000)     return `${(n / 1000).toFixed(1)}K`;
+  return n.toLocaleString();
 }
 
-function dropColor(drop: number) {
-  if (drop === 0) return '#10b981';
-  if (drop < 30)  return '#22c55e';
-  if (drop < 55)  return '#f59e0b';
+function convColor(drop: number) {
+  if (drop < 20)  return '#10b981';
+  if (drop < 45)  return '#f59e0b';
   return '#ef4444';
 }
 
-function FunnelTooltip({ active, payload, label }: {
-  active?: boolean; payload?: { name: string; value: number; fill: string }[]; label?: string;
-}) {
-  if (!active || !payload?.length) return null;
+type View = 'overall' | 'digital' | 'physical';
+
+function FunnelViz({ rows }: { rows: FunnelRow[] }) {
+  const top = rows[0]?.count || 1;
+
   return (
-    <div className="bg-[#1e1e1e] border border-[#3a3a3a] rounded-lg px-3 py-2 text-xs shadow-lg min-w-[160px]">
-      <p className="text-[#9ca3af] font-semibold mb-1.5">{label}</p>
-      {payload.map((p, i) => (
-        <div key={i} className="flex items-center gap-2 py-0.5">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.fill }} />
-          <span className="text-[#d1d5db]">{p.name}:</span>
-          <span className="text-white font-bold">{fmt(p.value)}</span>
-        </div>
-      ))}
+    <div className="space-y-1.5">
+      {rows.map((row, i) => {
+        const widthPct = Math.max(8, (row.count / top) * 100);
+        const conv = i > 0
+          ? Math.round(((rows[i - 1].count - row.count) / Math.max(1, rows[i - 1].count)) * 100)
+          : 0;
+        const color = STAGE_COLOR[i] ?? '#818cf8';
+
+        return (
+          <div key={row.stage}>
+            {/* Connector arrow between stages */}
+            {i > 0 && (
+              <div className="flex items-center justify-center gap-2 py-0.5 mb-1">
+                <div className="flex-1 h-px bg-[#2a2a2a]" />
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full border tabular-nums"
+                  style={{
+                    color: convColor(conv),
+                    borderColor: `${convColor(conv)}40`,
+                    background: `${convColor(conv)}10`,
+                  }}
+                >
+                  ↓ {conv}% drop
+                </span>
+                <div className="flex-1 h-px bg-[#2a2a2a]" />
+              </div>
+            )}
+
+            {/* Stage row */}
+            <div className="flex items-center gap-3">
+              {/* Stage label */}
+              <div className="w-[130px] shrink-0 text-right">
+                <p className="text-[11px] font-semibold text-[#d1d5db] leading-tight">{row.stage}</p>
+                <p className="text-[9px] text-[#4b5563] mt-0.5">{STAGE_DEF[row.stage] ?? ''}</p>
+              </div>
+
+              {/* Funnel bar — centred, tapers naturally */}
+              <div className="flex-1 flex justify-center">
+                <div
+                  className="h-9 rounded-md flex items-center justify-center transition-all duration-500"
+                  style={{
+                    width: `${widthPct}%`,
+                    background: `linear-gradient(90deg, ${color}22, ${color}55)`,
+                    border: `1px solid ${color}60`,
+                    boxShadow: `0 0 8px ${color}20`,
+                  }}
+                >
+                  <span
+                    className="text-[11px] font-bold tabular-nums"
+                    style={{ color }}
+                  >
+                    {fmt(row.count)}
+                  </span>
+                </div>
+              </div>
+
+              {/* % of top and stage index */}
+              <div className="w-[56px] shrink-0 text-left">
+                <p className="text-[11px] font-semibold tabular-nums" style={{ color }}>
+                  {row.pct}%
+                </p>
+                <p className="text-[9px] text-[#4b5563]">of install</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilters }) {
-  const [data, setData]           = useState<AcquisitionData | null>(null);
-  const [byChannel, setByChannel] = useState(false);
-  const [detailed, setDetailed]   = useState(false);
+  const [data, setData]   = useState<AcquisitionData | null>(null);
+  const [view, setView]   = useState<View>('overall');
   const filterKey = JSON.stringify(filters);
 
   useEffect(() => {
@@ -98,168 +139,125 @@ export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilt
     return (
       <div className="space-y-3">
         <div className="h-10 bg-[#1a1a1a] rounded-lg animate-pulse" />
-        <div className="h-[320px] bg-[#1a1a1a] rounded-lg animate-pulse" />
+        <div className="h-[440px] bg-[#1a1a1a] rounded-lg animate-pulse" />
       </div>
     );
   }
 
-  const subChKeys = ['Paid Digital', 'Organic', 'Referrals', 'Brand/ATL', 'Corporate'];
-  const showDetailed = byChannel && detailed;
-  const showBinary   = byChannel && !detailed;
+  const rows = view === 'digital' ? data.digital : view === 'physical' ? data.physical : data.overall;
 
-  // Build chart rows
-  const chartData = data.overall.map((s, i) => {
-    const row: Record<string, unknown> = {
-      stage:     STAGE_SHORT[s.stage] ?? s.stage,
-      fullStage: s.stage,
-      overall:   s.count,
-      digital:   data.digital[i]?.count  ?? 0,
-      physical:  data.physical[i]?.count ?? 0,
-      dropPct:   s.dropPct,
-    };
-    for (const ch of subChKeys) row[ch] = data.subChannels[ch]?.[i]?.count ?? 0;
-    return row;
-  });
+  // Key conversion KPIs
+  const install  = rows[0]?.count ?? 1;
+  const trial    = rows[2]?.count ?? 0;
+  const paid     = rows[6]?.count ?? 0;
+  const topToPaid   = install > 0 ? ((paid / install) * 100).toFixed(1) : '0';
+  const trialToPaid = trial  > 0 ? ((paid / trial)   * 100).toFixed(1) : '0';
+  const biggestLeak = [...rows].filter(r => r.dropPct > 0).sort((a, b) => b.dropPct - a.dropPct)[0];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
 
       {/* Insight */}
       <div className="bg-[#0f1f2e] border border-[#1d4ed8]/30 rounded-lg px-4 py-3">
-        <p className="text-[10px] font-bold text-[#60a5fa] uppercase tracking-wider mb-1">Insight</p>
+        <p className="text-[10px] font-bold text-[#60a5fa] uppercase tracking-wider mb-1">Auto Insight</p>
         <p className="text-sm text-[#bfdbfe]">{data.insight}</p>
       </div>
 
-      {/* Stage definitions */}
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3">
-        <p className="text-[10px] font-bold text-[#6b7280] uppercase tracking-wider mb-2">Funnel Stage Definitions</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1.5">
-          {[
-            { stage: 'Install',               def: 'app_install event fired'             },
-            { stage: 'Sign-up',               def: 'sign_up event fired'                 },
-            { stage: 'Trial Activated',        def: 'trial_booked event fired'            },
-            { stage: 'Class Booked',           def: 'class_booked event fired'            },
-            { stage: 'First Workout',          def: '≥1 workout_completed event'          },
-            { stage: 'Second Workout',         def: '≥2 workout_completed events'         },
-            { stage: 'Paid Subscription',      def: 'subscription_purchased event fired'  },
-          ].map(d => (
-            <div key={d.stage} className="flex items-start gap-1.5">
-              <span className="text-[10px] font-semibold text-white mt-px shrink-0">{d.stage}:</span>
-              <span className="text-[10px] text-[#6b7280]">{d.def}</span>
-            </div>
-          ))}
+      {/* KPI pills */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-center">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wider mb-1">Install → Paid</p>
+          <p className="text-xl font-bold text-[#34d399]">{topToPaid}%</p>
+          <p className="text-[9px] text-[#4b5563] mt-0.5">overall conversion</p>
+        </div>
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-center">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wider mb-1">Trial → Paid</p>
+          <p className="text-xl font-bold text-[#818cf8]">{trialToPaid}%</p>
+          <p className="text-[9px] text-[#4b5563] mt-0.5">post-trial conversion</p>
+        </div>
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-center">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wider mb-1">Biggest Leak</p>
+          <p className="text-xl font-bold text-[#ef4444]">↓ {biggestLeak?.dropPct ?? 0}%</p>
+          <p className="text-[9px] text-[#4b5563] mt-0.5 truncate">{biggestLeak?.stage ?? '—'}</p>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-5 flex-wrap">
-        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-          <input type="checkbox" checked={byChannel} onChange={e => { setByChannel(e.target.checked); if (!e.target.checked) setDetailed(false); }}
-            className="w-3.5 h-3.5 accent-indigo-500" />
-          <span className="text-xs text-[#9ca3af]">By Channel</span>
-        </label>
-        {byChannel && (
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input type="checkbox" checked={detailed} onChange={e => setDetailed(e.target.checked)}
-              className="w-3.5 h-3.5 accent-emerald-500" />
-            <span className="text-xs text-[#9ca3af]">Detailed Breakdown</span>
-          </label>
-        )}
+      {/* View toggle */}
+      <div className="flex gap-2">
+        {(['overall', 'digital', 'physical'] as View[]).map(v => (
+          <button key={v} onClick={() => setView(v)}
+            className={`text-[11px] font-semibold px-3 py-1 rounded-md border transition-colors capitalize ${
+              view === v
+                ? 'bg-[#1d4ed8]/20 border-[#60a5fa]/50 text-[#60a5fa]'
+                : 'border-[#2a2a2a] text-[#6b7280] hover:text-[#9ca3af] hover:border-[#3a3a3a]'
+            }`}>
+            {v === 'overall' ? 'All Channels' : v === 'digital' ? 'Digital' : 'Physical'}
+          </button>
+        ))}
       </div>
 
-      {/* Funnel chart */}
-      <div>
-        <p className="text-[10px] font-bold text-[#4b5563] uppercase tracking-widest mb-2">
-          {showDetailed ? 'All 5 Channels — per stage'
-            : showBinary ? 'Digital vs Physical — per stage'
-            : 'Full Acquisition Funnel'}
-        </p>
+      {/* Funnel visualisation */}
+      <FunnelViz rows={rows} />
 
-        <div className={showDetailed ? 'overflow-x-auto' : ''}>
-          <div style={showDetailed ? { minWidth: 960 } : {}}>
-            <ResponsiveContainer width="100%" height={showBinary || showDetailed ? 300 : 270}>
-              <BarChart data={chartData} barGap={2} barCategoryGap={showDetailed ? '18%' : '25%'}
-                margin={{ top: 28, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
-                <XAxis dataKey="stage" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={fmt} tick={{ fill: '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} width={42} />
-                <Tooltip content={<FunnelTooltip />} cursor={{ fill: '#ffffff06' }} />
+      {/* Channel breakdown table (collapsed by default) */}
+      <ChannelTable data={data} />
 
-                {/* Overall */}
-                {!byChannel && (
-                  <Bar dataKey="overall" name="Users" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                    {chartData.map((d, i) => (
-                      <Cell key={i} fill={dropColor(d.dropPct as number)} />
-                    ))}
-                    <LabelList dataKey="dropPct" position="top"
-                      style={{ fill: '#9ca3af', fontSize: 10, fontWeight: 600 }}
-                      formatter={(v: unknown) => typeof v === 'number' && v > 0 ? `↓${v}%` : ''} />
-                  </Bar>
-                )}
+    </div>
+  );
+}
 
-                {/* Digital vs Physical */}
-                {showBinary && (
-                  <>
-                    <Legend wrapperStyle={{ fontSize: 10, color: '#9ca3af' }}
-                      formatter={v => v === 'digital' ? 'Digital (App/Web)' : 'Physical (Walk-in/Referral)'} />
-                    <Bar dataKey="digital"  name="digital"  fill="#818cf8" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                      <LabelList dataKey="digital"  position="top" style={{ fill: '#818cf8', fontSize: 9 }} formatter={(v: unknown) => fmt(Number(v))} />
-                    </Bar>
-                    <Bar dataKey="physical" name="physical" fill="#fb923c" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                      <LabelList dataKey="physical" position="top" style={{ fill: '#fb923c', fontSize: 9 }} formatter={(v: unknown) => fmt(Number(v))} />
-                    </Bar>
-                  </>
-                )}
+function ChannelTable({ data }: { data: AcquisitionData }) {
+  const [open, setOpen] = useState(false);
+  const channels = ['Paid Digital', 'Organic', 'Referrals', 'Brand/ATL', 'Corporate'];
 
-                {/* All 5 channels */}
-                {showDetailed && (
-                  <>
-                    <Legend wrapperStyle={{ fontSize: 10, color: '#9ca3af' }}
-                      formatter={v => `${CH_LABEL[v] ?? v} (${CH_GROUP[v] ?? ''})`} />
-                    {subChKeys.map(ch => (
-                      <Bar key={ch} dataKey={ch} name={ch} fill={CH_COLOR[ch]} radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                        <LabelList dataKey={ch} position="top" style={{ fill: CH_COLOR[ch], fontSize: 8 }}
-                          formatter={(v: unknown) => fmt(Number(v))} />
-                      </Bar>
-                    ))}
-                  </>
-                )}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+  return (
+    <div className="border border-[#2a2a2a] rounded-lg overflow-hidden">
+      <button onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#1e1e1e] transition-colors text-left">
+        <span className="text-[11px] font-semibold text-[#6b7280] uppercase tracking-wider">Channel Breakdown — Install → Paid</span>
+        <span className="text-[#4b5563] text-[10px]">{open ? '▲' : '▼'}</span>
+      </button>
 
-      {/* Drop % summary table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs min-w-[480px]">
-          <thead>
-            <tr className="border-b border-[#2a2a2a]">
-              <th className="text-left py-2 px-3 text-[#4b5563] font-semibold uppercase tracking-wider">Stage</th>
-              <th className="text-right py-2 px-3 text-[#4b5563] font-semibold uppercase tracking-wider">Users</th>
-              <th className="text-right py-2 px-3 text-[#4b5563] font-semibold uppercase tracking-wider">% of Install</th>
-              <th className="text-right py-2 px-3 text-[#4b5563] font-semibold uppercase tracking-wider">Drop from prev</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.overall.map((s, i) => (
-              <tr key={i} className="border-b border-[#1e1e1e] hover:bg-[#1a1a1a]">
-                <td className="py-2.5 px-3 text-[#9ca3af]">{s.stage}</td>
-                <td className="py-2.5 px-3 text-right text-white tabular-nums font-semibold">{fmt(s.count)}</td>
-                <td className="py-2.5 px-3 text-right text-[#6b7280] tabular-nums">{s.pct}%</td>
-                <td className="py-2.5 px-3 text-right tabular-nums">
-                  {i === 0 ? (
-                    <span className="text-[#4b5563]">—</span>
-                  ) : (
-                    <span style={{ color: dropColor(s.dropPct) }}>↓ {s.dropPct}%</span>
-                  )}
-                </td>
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px] min-w-[520px]">
+            <thead>
+              <tr className="border-b border-[#2a2a2a]">
+                <th className="text-left px-4 py-2 text-[#4b5563] font-semibold uppercase tracking-wider">Channel</th>
+                <th className="text-right px-3 py-2 text-[#4b5563] font-semibold">Install</th>
+                <th className="text-right px-3 py-2 text-[#4b5563] font-semibold">Trial</th>
+                <th className="text-right px-3 py-2 text-[#4b5563] font-semibold">Paid</th>
+                <th className="text-right px-3 py-2 text-[#4b5563] font-semibold">Conv %</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
+            </thead>
+            <tbody>
+              {channels.map(ch => {
+                const rows = data.subChannels[ch];
+                if (!rows) return null;
+                const install = rows[0]?.count ?? 0;
+                const trial   = rows[2]?.count ?? 0;
+                const paid    = rows[6]?.count ?? 0;
+                const conv    = install > 0 ? ((paid / install) * 100).toFixed(1) : '0';
+                const color   = CH_COLOR[ch] ?? '#6b7280';
+                return (
+                  <tr key={ch} className="border-b border-[#1e1e1e] hover:bg-[#1a1a1a]">
+                    <td className="px-4 py-2.5">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+                        <span className="text-[#d1d5db] font-medium">{ch}</span>
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-[#9ca3af] tabular-nums">{fmt(install)}</td>
+                    <td className="px-3 py-2.5 text-right text-[#9ca3af] tabular-nums">{fmt(trial)}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums" style={{ color }}>{fmt(paid)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold tabular-nums" style={{ color }}>{conv}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
