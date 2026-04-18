@@ -35,3 +35,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 cult.db
+cult.db-shm
+cult.db-wal
