@@ -35,7 +35,8 @@ function Shell({ children }: { children: React.ReactNode }) {
         {/* ── Sticky header — hidden on Events page (it owns its own header) ── */}
         {pathname !== '/events' && (
           <div className="flex-shrink-0 sticky top-0 z-20 bg-[#0f0f0f] border-b border-[#1e1e1e]">
-            <div className="px-4 sm:px-6 py-3 flex items-center gap-4">
+            {/* Row 1: menu + title + live */}
+            <div className="px-4 sm:px-6 pt-3 pb-2 flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Open menu"
@@ -48,14 +49,17 @@ function Shell({ children }: { children: React.ReactNode }) {
 
               <h1 className="text-sm font-bold text-white flex-shrink-0">{title}</h1>
 
-              <div className="flex-1 min-w-0">
-                <DateRangePicker filters={filters} onChange={setFilters} />
-              </div>
+              <div className="flex-1" />
 
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                <span className="text-[11px] text-[#4b5563] hidden sm:block">Live</span>
+                <span className="text-[11px] text-[#4b5563]">Live</span>
               </div>
+            </div>
+
+            {/* Row 2: date picker — full width, scrollable on mobile */}
+            <div className="px-4 sm:px-6 pb-2.5 overflow-x-auto scrollbar-none">
+              <DateRangePicker filters={filters} onChange={setFilters} />
             </div>
           </div>
         )}

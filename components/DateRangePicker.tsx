@@ -56,7 +56,7 @@ export default function DateRangePicker({ filters, onChange }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-1 flex-wrap">
+    <div className="flex items-center gap-1 flex-nowrap w-max">
       {PILLS.map(p => (
         <button
           key={p.key}

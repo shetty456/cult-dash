@@ -65,7 +65,7 @@ export default function NSMMilestones({ data }: NSMMilestonesProps) {
             <p className="text-xs text-[#6b7280] mt-0.5">Week of {currentWeek.week} · {currentWeek.cohortSize.toLocaleString()} new users</p>
           </div>
           <span className="text-xs text-[#9ca3af] bg-[#2d2d2d] border border-[#3a3a3a] rounded-lg px-3 py-1.5">
-            NSM = 3 workouts × 4 weeks
+            NSM = ≥3 workouts / week
           </span>
         </div>
 
