@@ -8,11 +8,20 @@ import {
 import { GlobalFilters } from '@/lib/queryHelpers';
 
 interface FunnelRow { stage: string; count: number; pct: number; dropPct: number; }
+interface NsmBridge {
+  nsmCompleters: number;
+  nsmPaid:       number;
+  nsmFree:       number;
+  paidAmongNsm:  number;
+  upsellMrrOpportunity: number;
+}
+
 interface AcquisitionData {
   overall:     FunnelRow[];
   digital:     FunnelRow[];
   physical:    FunnelRow[];
   subChannels: Record<string, FunnelRow[]>;
+  nsmBridge:   NsmBridge;
   insight:     string;
 }
 
@@ -53,6 +62,87 @@ function FunnelTooltip({ active, payload, label }: {
           <span className="text-white font-bold">{fmt(p.value)}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function fmtMrr(n: number) {
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+  if (n >= 100000)   return `₹${(n / 100000).toFixed(1)}L`;
+  if (n >= 1000)     return `₹${(n / 1000).toFixed(0)}K`;
+  return `₹${n}`;
+}
+
+function NsmBridgePanel({ b, signups, paid }: { b: NsmBridge; signups: number; paid: number }) {
+  const signupToNsm = signups > 0 ? ((b.nsmCompleters / signups) * 100).toFixed(1) : '0';
+  const paidToNsm   = paid   > 0 ? ((b.nsmPaid / paid)          * 100).toFixed(1) : '0';
+
+  return (
+    <div className="rounded-xl border border-[#10b981]/25 bg-gradient-to-br from-[#0a1f14] to-[#0d0f0d] p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-[#10b981] shadow-[0_0_6px_#10b981]" />
+        <p className="text-[11px] font-bold text-[#10b981] uppercase tracking-widest">Funnel → NSM Connection</p>
+        <div className="flex-1 h-px bg-[#10b981]/15" />
+      </div>
+
+      {/* Flow diagram */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Sign-ups */}
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-center min-w-[80px]">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wide mb-0.5">Sign-ups</p>
+          <p className="text-base font-bold text-white">{fmt(signups)}</p>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <span className="text-[9px] text-[#4b5563]">{signupToNsm}% build habit</span>
+          <span className="text-[#4b5563] text-sm">→</span>
+        </div>
+
+        {/* NSM completers */}
+        <div className="bg-[#0a1f14] border border-[#10b981]/40 rounded-lg px-3 py-2 text-center min-w-[90px]">
+          <p className="text-[9px] text-[#10b981] uppercase tracking-wide mb-0.5">NSM Completers</p>
+          <p className="text-base font-bold text-[#10b981]">{fmt(b.nsmCompleters)}</p>
+          <p className="text-[9px] text-[#4b5563]">≥3 workouts/week</p>
+        </div>
+
+        <span className="text-[#4b5563] text-sm">→</span>
+
+        {/* Paid among NSM */}
+        <div className="bg-[#1a1a1a] border border-[#818cf8]/40 rounded-lg px-3 py-2 text-center min-w-[80px]">
+          <p className="text-[9px] text-[#818cf8] uppercase tracking-wide mb-0.5">Paid</p>
+          <p className="text-base font-bold text-[#818cf8]">{fmt(b.nsmPaid)}</p>
+          <p className="text-[9px] text-[#4b5563]">{b.paidAmongNsm}% of NSM</p>
+        </div>
+
+        <span className="text-[#3a3a3a] text-sm">+</span>
+
+        {/* Free NSM — upsell targets */}
+        <div className="bg-[#1f1208] border border-[#f59e0b]/40 rounded-lg px-3 py-2 text-center min-w-[80px]">
+          <p className="text-[9px] text-[#f59e0b] uppercase tracking-wide mb-0.5">Free NSM</p>
+          <p className="text-base font-bold text-[#f59e0b]">{fmt(b.nsmFree)}</p>
+          <p className="text-[9px] text-[#4b5563]">not yet paying</p>
+        </div>
+      </div>
+
+      {/* Insight row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wide mb-1">Paid users hitting NSM</p>
+          <p className="text-lg font-bold text-[#818cf8]">{paidToNsm}%</p>
+          <p className="text-[9px] text-[#4b5563]">strong habit-payment link</p>
+        </div>
+        <div className="bg-[#111] border border-[#f59e0b]/30 rounded-lg px-3 py-2.5">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wide mb-1">Free NSM — upsell target</p>
+          <p className="text-lg font-bold text-[#f59e0b]">{fmt(b.nsmFree)}</p>
+          <p className="text-[9px] text-[#4b5563]">built habit, not yet paid</p>
+        </div>
+        <div className="bg-[#111] border border-[#10b981]/30 rounded-lg px-3 py-2.5">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wide mb-1">MRR uplift (30% conv.)</p>
+          <p className="text-lg font-bold text-[#10b981]">{fmtMrr(b.upsellMrrOpportunity)}/mo</p>
+          <p className="text-[9px] text-[#4b5563]">if 30% of free NSM convert</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -194,6 +284,9 @@ export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilt
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* NSM Bridge */}
+      {data.nsmBridge && <NsmBridgePanel b={data.nsmBridge} signups={data.overall[0]?.count ?? 0} paid={data.overall[4]?.count ?? 0} />}
 
       {/* Stage definitions */}
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3">

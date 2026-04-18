@@ -135,11 +135,48 @@ export async function GET(req: NextRequest) {
     industryAvg: 4000,
   };
 
+  // ── NSM bridge: connect acquisition funnel to the north star metric ───────
+  // Users who hit ≥3 workouts/week in at least one week of the window
+  type CountRow = { c: number };
+  const nsmCompleterCount = (db.prepare(`
+    SELECT COUNT(DISTINCT user_id) as c FROM (
+      SELECT user_id, strftime('%Y-W%W', timestamp) as wk
+      FROM events
+      WHERE type = 'workout_completed' AND timestamp >= ? AND timestamp <= ?
+      GROUP BY user_id, wk HAVING COUNT(*) >= 3
+    )
+  `).get(from, to) as CountRow).c * SCALE;
+
+  const nsmPaidCount = (db.prepare(`
+    SELECT COUNT(DISTINCT nsm.user_id) as c FROM (
+      SELECT user_id FROM (
+        SELECT user_id, strftime('%Y-W%W', timestamp) as wk
+        FROM events
+        WHERE type = 'workout_completed' AND timestamp >= ? AND timestamp <= ?
+        GROUP BY user_id, wk HAVING COUNT(*) >= 3
+      )
+    ) nsm JOIN users u ON u.id = nsm.user_id WHERE u.plan != 'free'
+  `).get(from, to) as CountRow).c * SCALE;
+
+  const nsmFreeCount = nsmCompleterCount - nsmPaidCount;
+  // Blended avg monthly plan value (~₹600/mo weighted across monthly/quarterly/annual)
+  const avgMonthlyValue = 600;
+  const upsellMrrOpportunity = Math.round(nsmFreeCount * 0.30 * avgMonthlyValue);
+
+  const nsmBridge = {
+    nsmCompleters:    nsmCompleterCount,
+    nsmPaid:          nsmPaidCount,
+    nsmFree:          nsmFreeCount,
+    paidAmongNsm:     nsmCompleterCount > 0 ? Math.round((nsmPaidCount / nsmCompleterCount) * 100) : 0,
+    upsellMrrOpportunity,
+  };
+
   return jsonResponse({
     overall, digital, physical, subChannels,
     cac: { digital: cacDigital, physical: cacPhysical },
     cacByChannel, costPerPaidSub,
     industryBenchmarks: INDUSTRY,
+    nsmBridge,
     insight: autoInsight(overall, digital, physical),
   });
 }
