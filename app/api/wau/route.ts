@@ -6,6 +6,11 @@ export async function GET(req: NextRequest) {
   const f = parseFilters(req.nextUrl.searchParams);
   const { clause, params } = joinedWhere(f);
 
+  // WAU = users who completed ≥1 workout in the week (visits alone don't count)
+  const addType = clause
+    ? clause.replace('WHERE ', `WHERE e.type='workout_completed' AND `)
+    : `WHERE e.type='workout_completed'`;
+
   type Row = { week: string; wau: number };
   const rows = db.prepare(`
     SELECT
@@ -13,7 +18,7 @@ export async function GET(req: NextRequest) {
       COUNT(DISTINCT e.user_id) * ${SCALE} as wau
     FROM events e
     JOIN users u ON u.id = e.user_id
-    ${clause}
+    ${addType}
     GROUP BY week
     ORDER BY week ASC
     LIMIT 13

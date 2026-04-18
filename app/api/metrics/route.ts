@@ -20,15 +20,15 @@ export async function GET(req: NextRequest) {
   const prevTo   = from;
   const prevFrom = new Date(new Date(from).getTime() - durationMs).toISOString();
 
-  // ── WAU ──────────────────────────────────────────────────────────────────
+  // ── WAU — users who completed ≥1 workout (visits alone don't count) ──────
   const wau = (db.prepare(`
     SELECT COUNT(DISTINCT user_id) as c FROM events
-    WHERE timestamp >= @from AND timestamp <= @to
+    WHERE type = 'workout_completed' AND timestamp >= @from AND timestamp <= @to
   `).get({ from, to }) as { c: number }).c * SCALE;
 
   const wauPrev = (db.prepare(`
     SELECT COUNT(DISTINCT user_id) as c FROM events
-    WHERE timestamp >= @from AND timestamp <= @to
+    WHERE type = 'workout_completed' AND timestamp >= @from AND timestamp <= @to
   `).get({ from: prevFrom, to: prevTo }) as { c: number }).c * SCALE;
 
   const wauChange = wauPrev > 0 ? Math.round(((wau - wauPrev) / wauPrev) * 1000) / 10 : 0;
