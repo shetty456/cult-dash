@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+type LinkedMetric = '48h' | 'week1' | 'timeToSecond' | 'neverActivated' | 'funnel';
+
 interface VariantData {
   label: string;
   n: number;
@@ -14,6 +16,7 @@ interface Experiment {
   name: string;
   hypothesis: string;
   goal: string;
+  linkedMetric: LinkedMetric;
   status: 'running' | 'concluded';
   winner: 'control' | 'treatment' | null;
   started_at: string;
@@ -26,25 +29,44 @@ interface Experiment {
   confidence: number;
 }
 
+const METRIC_META: Record<LinkedMetric, { label: string; color: string; bg: string; border: string }> = {
+  '48h':           { label: '1st workout ≤48h',      color: '#a78bfa', bg: '#a78bfa18', border: '#7c3aed40' },
+  'week1':         { label: '≥2 workouts week 1',     color: '#10b981', bg: '#10b98118', border: '#10b98140' },
+  'timeToSecond':  { label: 'Median days → 2nd',      color: '#60a5fa', bg: '#60a5fa18', border: '#3b82f640' },
+  'neverActivated':{ label: '0 workouts week 1 ↓',    color: '#ef4444', bg: '#ef444418', border: '#ef444440' },
+  'funnel':        { label: 'Trial → Paid conv.',      color: '#818cf8', bg: '#818cf818', border: '#6366f140' },
+};
+
 function fmt(n: number) {
   if (n >= 100000) return `${(n / 100000).toFixed(1)}L`;
   if (n >= 1000)   return `${(n / 1000).toFixed(1)}K`;
   return n.toLocaleString();
 }
 
+function MetricBadge({ metric }: { metric: LinkedMetric }) {
+  const m = METRIC_META[metric];
+  return (
+    <span
+      className="text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap"
+      style={{ color: m.color, background: m.bg, borderColor: m.border }}
+    >
+      {m.label}
+    </span>
+  );
+}
+
 function StatusPill({ status }: { status: 'running' | 'concluded' }) {
-  return status === 'running'
-    ? (
-      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full shrink-0">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        Running
-      </span>
-    ) : (
-      <span className="flex items-center gap-1 text-[10px] font-bold text-[#9ca3af] bg-[#9ca3af]/10 border border-[#9ca3af]/20 px-2 py-0.5 rounded-full shrink-0">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#9ca3af]" />
-        Concluded
-      </span>
-    );
+  return status === 'running' ? (
+    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full shrink-0">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      Running
+    </span>
+  ) : (
+    <span className="flex items-center gap-1 text-[10px] font-bold text-[#9ca3af] bg-[#9ca3af]/10 border border-[#9ca3af]/20 px-2 py-0.5 rounded-full shrink-0">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#9ca3af]" />
+      Concluded
+    </span>
+  );
 }
 
 function LiftBadge({ lift }: { lift: number }) {
@@ -66,21 +88,19 @@ function SigBadge({ significant, confidence, status }: { significant: boolean; c
   }
   return (
     <span className="text-[10px] text-[#6b7280] bg-[#1e1e1e] border border-[#2a2a2a] px-1.5 py-0.5 rounded">
-      Not yet
+      Not yet sig.
     </span>
   );
 }
 
-function VariantBar({
-  label, rate, n, conversions, color, isWinner,
-}: {
+function VariantBar({ label, rate, n, conversions, color, isWinner }: {
   label: string; rate: number; n: number; conversions: number;
   color: string; isWinner: boolean;
 }) {
   const pct = Math.round(rate * 100);
   return (
     <div className="flex items-center gap-3">
-      <div className="w-[140px] shrink-0 flex items-center gap-1.5">
+      <div className="w-[148px] shrink-0 flex items-center gap-1.5">
         {isWinner && <span className="text-[10px]">👑</span>}
         <span className="text-[11px] font-medium text-[#d1d5db] truncate">{label}</span>
       </div>
@@ -101,20 +121,26 @@ function VariantBar({
 
 function ExperimentRow({ exp }: { exp: Experiment }) {
   const [open, setOpen] = useState(false);
-  const maxRate = Math.max(exp.control.conv_rate, exp.treatment.conv_rate);
-  const ctrlColor  = exp.winner === 'control'   ? '#10b981' : '#4b5563';
-  const trtColor   = exp.winner === 'treatment'  ? '#818cf8' : '#6366f1';
+  const m = METRIC_META[exp.linkedMetric];
+  const ctrlColor = exp.winner === 'control'   ? '#10b981' : '#4b5563';
+  const trtColor  = exp.winner === 'treatment' ? m.color   : '#6366f1';
 
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div
+      className="bg-[#1a1a1a] rounded-lg overflow-hidden border"
+      style={{ borderColor: open ? m.border : '#2a2a2a' }}
+    >
       <button
         onClick={() => setOpen(p => !p)}
-        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-[#1e1e1e] transition-colors"
+        className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-[#1e1e1e] transition-colors"
       >
-        <StatusPill status={exp.status} />
+        <div className="flex flex-col gap-1.5 shrink-0 pt-0.5">
+          <StatusPill status={exp.status} />
+          <MetricBadge metric={exp.linkedMetric} />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-white truncate">{exp.name}</p>
-          <p className="text-[10px] text-[#6b7280] mt-0.5">Goal: {exp.goal}</p>
+          <p className="text-[13px] font-semibold text-white leading-tight">{exp.name}</p>
+          <p className="text-[10px] text-[#6b7280] mt-1">Goal: <span style={{ color: m.color }}>{exp.goal}</span></p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <LiftBadge lift={exp.lift} />
@@ -150,7 +176,7 @@ function ExperimentRow({ exp }: { exp: Experiment }) {
             <span>Started {exp.started_at}</span>
             {exp.ended_at && <span>Ended {exp.ended_at}</span>}
             <span>z = {exp.z}</span>
-            <span className="ml-auto font-medium" style={{ color: exp.significant ? '#818cf8' : '#6b7280' }}>
+            <span className="ml-auto font-medium" style={{ color: exp.significant ? m.color : '#6b7280' }}>
               {exp.significant
                 ? `Significant at ${exp.confidence}% confidence`
                 : `${exp.confidence}% confidence — need more data`}
@@ -173,7 +199,7 @@ export default function ExperimentsCard() {
     return (
       <div className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 sm:p-5 space-y-3">
         <div className="h-5 w-48 bg-[#1a1a1a] rounded animate-pulse" />
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4, 5].map(i => (
           <div key={i} className="h-14 bg-[#1a1a1a] rounded-lg animate-pulse" />
         ))}
       </div>
@@ -185,14 +211,24 @@ export default function ExperimentsCard() {
 
   return (
     <div className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 sm:p-5">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-white">Experiment Tracker</p>
-          <p className="text-[11px] text-[#6b7280] mt-0.5">A/B tests across the growth funnel — click to expand</p>
+          <p className="text-[11px] text-[#6b7280] mt-0.5">Each test is linked to a leading activation metric — click to expand</p>
         </div>
         <span className="text-[10px] font-semibold text-[#9ca3af] bg-[#1e1e1e] border border-[#3a3a3a] px-2.5 py-1 rounded-full shrink-0">
           {running} running · {concluded} concluded
         </span>
+      </div>
+
+      {/* Metric legend */}
+      <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-[#2a2a2a]">
+        {(Object.entries(METRIC_META) as [LinkedMetric, typeof METRIC_META[LinkedMetric]][]).map(([key, m]) => (
+          <span key={key} className="text-[9px] font-semibold px-2 py-0.5 rounded-full border"
+            style={{ color: m.color, background: m.bg, borderColor: m.border }}>
+            {m.label}
+          </span>
+        ))}
       </div>
 
       <div className="space-y-2">
