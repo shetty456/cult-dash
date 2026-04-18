@@ -294,27 +294,82 @@ export default function OverviewPage() {
           <h2 className="text-white font-semibold text-base tracking-tight">Early Activation Signals</h2>
           <div className="flex-1 h-px bg-[#2a2a2a]" />
         </div>
-        <div
-          onClick={() => setShowActivationModal(true)}
-          className="bg-[#161616] border border-[#2a2a2a] hover:border-[#7c3aed]/50 rounded-xl p-4 sm:p-5 cursor-pointer transition-colors group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-[#6b7280] uppercase tracking-wider font-semibold">Sign-up cohort · last 30 days</p>
-            <span className="text-[10px] text-[#a78bfa] bg-[#a78bfa]/10 px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">View details →</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: '1st workout ≤48h',   value: activationSummary ? `${activationSummary.pct48h}%`          : '—', color: '#a78bfa' },
-              { label: '≥2 workouts week 1',  value: activationSummary ? `${activationSummary.pctTwoWeek1}%`     : '—', color: '#10b981' },
-              { label: 'Median days → 2nd',   value: activationSummary ? `${activationSummary.medianDaysToSecond ?? '—'} days` : '—', color: '#60a5fa' },
-              { label: 'Never activated',      value: activationSummary ? `${(100 - activationSummary.pctTwoWeek1 - activationSummary.pct48h / 2).toFixed(0)}%` : '—', color: '#ef4444' },
-            ].map(s => (
-              <div key={s.label} className="bg-[#1a1a1a] rounded-lg px-3 py-2.5">
-                <p className="text-[10px] text-[#6b7280] mb-1">{s.label}</p>
-                <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+
+          {/* Card 1 — % 1st workout within 48h */}
+          <article onClick={() => setShowActivationModal(true)}
+            className="bg-[#161616] border border-[#7c3aed]/30 hover:border-[#7c3aed]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#a78bfa]" />
+              <span className="text-[9px] font-bold text-[#a78bfa] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] mb-2">1st Workout ≤ 48h</p>
+            <p className="text-3xl font-bold text-[#a78bfa]">{activationSummary ? `${activationSummary.pct48h}%` : '—'}</p>
+            <p className="text-[11px] text-[#4b5563] mt-2 leading-relaxed">
+              {activationSummary
+                ? activationSummary.pct48h >= 30
+                  ? `Strong early hook — ${activationSummary.pct48h}% act within 2 days of sign-up.`
+                  : `Only ${activationSummary.pct48h}% act in 48h — push a same-day nudge to lift this.`
+                : 'Users who complete their first workout within 48h of signing up.'}
+            </p>
+          </article>
+
+          {/* Card 2 — % ≥2 workouts in week 1 */}
+          <article onClick={() => setShowActivationModal(true)}
+            className="bg-[#161616] border border-[#10b981]/30 hover:border-[#10b981]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+              <span className="text-[9px] font-bold text-[#10b981] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] mb-2">≥ 2 Workouts Week 1</p>
+            <p className="text-3xl font-bold text-[#10b981]">{activationSummary ? `${activationSummary.pctTwoWeek1}%` : '—'}</p>
+            <p className="text-[11px] text-[#4b5563] mt-2 leading-relaxed">
+              {activationSummary
+                ? activationSummary.pctTwoWeek1 >= 20
+                  ? `${activationSummary.pctTwoWeek1}% built early momentum — repeat in week 1 predicts long-term retention.`
+                  : `Only ${activationSummary.pctTwoWeek1}% return for a 2nd workout in week 1 — highest churn risk cohort.`
+                : 'Users who complete ≥2 workouts in their first 7 days after sign-up.'}
+            </p>
+          </article>
+
+          {/* Card 3 — Median days to 2nd workout */}
+          <article onClick={() => setShowActivationModal(true)}
+            className="bg-[#161616] border border-[#60a5fa]/30 hover:border-[#60a5fa]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#60a5fa]" />
+              <span className="text-[9px] font-bold text-[#60a5fa] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] mb-2">Median Days → 2nd Workout</p>
+            <p className="text-3xl font-bold text-[#60a5fa]">
+              {activationSummary?.medianDaysToSecond != null ? `${activationSummary.medianDaysToSecond}d` : '—'}
+            </p>
+            <p className="text-[11px] text-[#4b5563] mt-2 leading-relaxed">
+              {activationSummary?.medianDaysToSecond != null
+                ? activationSummary.medianDaysToSecond <= 3
+                  ? `Median of ${activationSummary.medianDaysToSecond} days — re-engagement window is tight, automate a day-2 push.`
+                  : `Median of ${activationSummary.medianDaysToSecond} days — users are slow to return. Day-1 re-engagement is critical.`
+                : 'Median days between sign-up and 2nd workout_completed event.'}
+            </p>
+          </article>
+
+          {/* Card 4 — % never activated (0 workouts week 1) */}
+          <article onClick={() => setShowActivationModal(true)}
+            className="bg-[#161616] border border-[#ef4444]/30 hover:border-[#ef4444]/70 rounded-xl p-4 cursor-pointer transition-all group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
+              <span className="text-[9px] font-bold text-[#ef4444] opacity-0 group-hover:opacity-100 transition-opacity">Details →</span>
+            </div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] mb-2">0 Workouts in Week 1</p>
+            <p className="text-3xl font-bold text-[#ef4444]">
+              {activationSummary ? `${(100 - activationSummary.pct48h).toFixed(1)}%` : '—'}
+            </p>
+            <p className="text-[11px] text-[#4b5563] mt-2 leading-relaxed">
+              {activationSummary
+                ? `${(100 - activationSummary.pct48h).toFixed(0)}% of sign-ups never complete even one workout — your biggest retention leak.`
+                : 'Users who sign up but complete zero workouts in their first 7 days.'}
+            </p>
+          </article>
+
         </div>
       </section>
 
