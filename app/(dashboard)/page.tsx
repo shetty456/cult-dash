@@ -249,7 +249,12 @@ export default function OverviewPage() {
         </div>
       </section>
 
-      {/* ── Secondary metrics ── */}
+      {/* ── Acquisition Efficiency ── */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-white font-semibold text-base tracking-tight">Acquisition Efficiency</h2>
+          <div className="flex-1 h-px bg-[#2a2a2a]" />
+        </div>
       <div className="grid grid-cols-2 gap-3">
         <MetricCardV2
           id="cac"
@@ -276,6 +281,7 @@ export default function OverviewPage() {
           onClick={() => setModalCard('conversion')}
         />
       </div>
+      </section>
 
       {/* ── Experiment Tracker ── */}
       <ExperimentsCard />
