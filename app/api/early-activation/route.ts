@@ -184,6 +184,60 @@ export async function GET(req: NextRequest) {
       : 0;
   })();
 
+  // ── NSM multipliers: likelihood of hitting NSM given early activation ─────
+  type NsmMulRow = { activated: number; total: number };
+
+  const NSM_USERS_CTE = `
+    nsm_users AS (
+      SELECT DISTINCT user_id FROM (
+        SELECT user_id, strftime('%Y-W%W', timestamp) AS wk, COUNT(*) AS cnt
+        FROM events WHERE type = 'workout_completed'
+        GROUP BY user_id, wk
+        HAVING COUNT(*) >= 3
+      )
+    )
+  `;
+
+  const nsm48hMul = db.prepare(`
+    WITH ${NSM_USERS_CTE}
+    SELECT
+      SUM(CASE WHEN nsm_users.user_id IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+      COUNT(*) AS total
+    FROM (
+      SELECT su0.user_id FROM (
+        SELECT user_id, MIN(timestamp) AS signup_t
+        FROM events WHERE type = 'sign_up' AND timestamp >= @from AND timestamp <= @to
+        GROUP BY user_id
+      ) su0
+      JOIN events w ON w.user_id = su0.user_id
+        AND w.type = 'workout_completed'
+        AND julianday(w.timestamp) - julianday(su0.signup_t) BETWEEN 0 AND 2
+    ) cohort
+    LEFT JOIN nsm_users ON nsm_users.user_id = cohort.user_id
+  `).get({ from, to }) as NsmMulRow;
+
+  const nsmWeek1Mul = db.prepare(`
+    WITH ${NSM_USERS_CTE}
+    SELECT
+      SUM(CASE WHEN nsm_users.user_id IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+      COUNT(*) AS total
+    FROM (
+      SELECT su0.user_id FROM (
+        SELECT user_id, MIN(timestamp) AS signup_t
+        FROM events WHERE type = 'sign_up' AND timestamp >= @from AND timestamp <= @to
+        GROUP BY user_id
+      ) su0
+      JOIN events w ON w.user_id = su0.user_id
+        AND w.type = 'workout_completed'
+        AND julianday(w.timestamp) - julianday(su0.signup_t) BETWEEN 0 AND 7
+      GROUP BY su0.user_id HAVING COUNT(*) >= 2
+    ) cohort
+    LEFT JOIN nsm_users ON nsm_users.user_id = cohort.user_id
+  `).get({ from, to }) as NsmMulRow;
+
+  const nsmRate48h    = nsm48hMul.total  > 0 ? Math.round((nsm48hMul.activated  / nsm48hMul.total)  * 100) : 0;
+  const nsmRateWeek1  = nsmWeek1Mul.total > 0 ? Math.round((nsmWeek1Mul.activated / nsmWeek1Mul.total) * 100) : 0;
+
   return jsonResponse({
     summary: {
       cohortSize:         cohortSize * SCALE,
@@ -191,6 +245,8 @@ export async function GET(req: NextRequest) {
       pctTwoWeek1,
       medianDaysToSecond,
       zeroWorkoutPct,
+      nsmRate48h,
+      nsmRateWeek1,
     },
     trend,
     week1Distribution,

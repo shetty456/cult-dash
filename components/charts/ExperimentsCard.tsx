@@ -27,6 +27,7 @@ interface Experiment {
   z: number;
   significant: boolean;
   confidence: number;
+  projectedNsmLift: number | null;
 }
 
 const METRIC_META: Record<LinkedMetric, { label: string; color: string; bg: string; border: string }> = {
@@ -172,6 +173,14 @@ function ExperimentRow({ exp }: { exp: Experiment }) {
             />
           </div>
 
+          {exp.projectedNsmLift !== null && (
+            <div className="bg-[#0a1f14] border border-[#10b981]/25 rounded-lg px-3 py-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shrink-0" />
+              <span className="text-[10px] text-[#6b7280]">Projected NSM lift if treatment wins:</span>
+              <span className="text-[11px] font-bold text-[#10b981]">+{exp.projectedNsmLift}pp</span>
+              <span className="text-[9px] text-[#4b5563]">in 3x/week completers*</span>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[#6b7280] pt-1 border-t border-[#2a2a2a]">
             <span>Started {exp.started_at}</span>
             {exp.ended_at && <span>Ended {exp.ended_at}</span>}
@@ -198,9 +207,9 @@ export default function ExperimentsCard() {
   if (!data) {
     return (
       <div className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 sm:p-5 space-y-3">
-        <div className="h-5 w-48 bg-[#1a1a1a] rounded animate-pulse" />
+        <div className="h-5 w-48 rounded shimmer" />
         {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="h-14 bg-[#1a1a1a] rounded-lg animate-pulse" />
+          <div key={i} className="h-14 rounded-lg shimmer" />
         ))}
       </div>
     );

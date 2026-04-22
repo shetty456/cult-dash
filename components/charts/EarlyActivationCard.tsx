@@ -14,6 +14,8 @@ interface Summary {
   pct48h: number;
   pctTwoWeek1: number;
   medianDaysToSecond: number | null;
+  nsmRate48h?: number;
+  nsmRateWeek1?: number;
 }
 interface TrendRow  { week: string; cohortSize: number; pct48h: number; pctTwoWeek1: number; }
 interface DistRow   { bucket: string; users: number; pct: number; cumPct: number; }
@@ -34,7 +36,8 @@ const DIST_COLORS: Record<string, string> = {
 function Skel() {
   return (
     <div className="space-y-4">
-      {[1, 2].map(i => <div key={i} className="h-[200px] bg-[#1a1a1a] rounded-lg animate-pulse" />)}
+      <div className="h-5 w-48 rounded shimmer" />
+      {[1, 2].map(i => <div key={i} className="h-[200px] rounded-lg shimmer" />)}
     </div>
   );
 }
@@ -95,9 +98,12 @@ export default function EarlyActivationCard({
 
   // ── View: % 1st workout within 48h ────────────────────────────────────────
   if (view === '48h') {
+    const nsmLine = summary.nsmRate48h != null
+      ? ` Users who activate in 48h convert to NSM (3x/week) at ${summary.nsmRate48h}% — your highest-leverage pathway to the north star.`
+      : '';
     const insight = summary.pct48h >= 30
-      ? `Strong early hook — ${summary.pct48h}% of sign-ups complete their first workout within 48h. This is your highest-leverage activation moment.`
-      : `Only ${summary.pct48h}% of sign-ups work out in 48h. A same-day push notification at hour 4 could meaningfully lift this.`;
+      ? `Strong early hook — ${summary.pct48h}% of sign-ups complete their first workout within 48h.${nsmLine}`
+      : `Lift 48h activation first — only ${summary.pct48h}% work out in 48h. A same-day push at hour 4 is the highest-leverage action.${nsmLine}`;
     return (
       <div className="space-y-5">
         <div className="bg-[#1a0f2e] border border-[#7c3aed]/30 rounded-lg px-4 py-3">
@@ -138,9 +144,12 @@ export default function EarlyActivationCard({
 
   // ── View: ≥2 workouts in week 1 ───────────────────────────────────────────
   if (view === 'week1') {
+    const nsmLine = summary.nsmRateWeek1 != null
+      ? ` Users with ≥2 workouts in week 1 reach NSM (3x/week) at ${summary.nsmRateWeek1}% — a direct predictor of habit formation.`
+      : '';
     const insight = summary.pctTwoWeek1 >= 20
-      ? `${summary.pctTwoWeek1}% of sign-ups complete ≥2 workouts in week 1 — strong early momentum predicts long-term retention.`
-      : `Only ${summary.pctTwoWeek1}% return for a 2nd workout in week 1. This cohort has the highest churn risk — automate a day-3 re-engagement.`;
+      ? `${summary.pctTwoWeek1}% of sign-ups hit ≥2 workouts in week 1 — strong NSM signal.${nsmLine}`
+      : `Automate day-3 re-engagement → only ${summary.pctTwoWeek1}% return for a 2nd workout in week 1. This is the biggest NSM lever.${nsmLine}`;
     return (
       <div className="space-y-5">
         <div className="bg-[#0a1f18] border border-[#10b981]/30 rounded-lg px-4 py-3">

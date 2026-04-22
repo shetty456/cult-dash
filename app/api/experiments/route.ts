@@ -2,6 +2,8 @@ import db from '@/lib/db';
 import { jsonResponse } from '@/lib/queryHelpers';
 
 const SCALE = 25;
+const ANCHOR = '2026-04-17T23:59:59Z';
+const FROM   = new Date(new Date(ANCHOR).getTime() - 365 * 86400000).toISOString();
 
 // Each experiment is tied to one of the 4 early activation leading indicators
 // or the acquisition funnel. linkedMetric drives the badge colour in the UI.
@@ -89,6 +91,62 @@ function zTest(n1: number, p1: number, n2: number, p2: number) {
   return { z: Math.round(z * 100) / 100, significant: z >= 1.96, confidence };
 }
 
+// Pre-compute all NSM users once (any week with ≥3 workouts) — reused for both multipliers
+const NSM_USERS_CTE = `
+  nsm_users AS (
+    SELECT DISTINCT user_id FROM (
+      SELECT user_id, strftime('%Y-W%W', timestamp) AS wk, COUNT(*) AS cnt
+      FROM events WHERE type='workout_completed'
+      GROUP BY user_id, wk
+      HAVING COUNT(*) >= 3
+    )
+  )
+`;
+
+function getNsmMultipliers() {
+  type MR = { activated: number; total: number };
+
+  const m48h = db.prepare(`
+    WITH ${NSM_USERS_CTE}
+    SELECT
+      SUM(CASE WHEN nsm_users.user_id IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+      COUNT(*) AS total
+    FROM (
+      SELECT su0.user_id FROM (
+        SELECT user_id, MIN(timestamp) AS signup_t FROM events
+        WHERE type='sign_up' AND timestamp>=@from AND timestamp<=@to
+        GROUP BY user_id
+      ) su0
+      JOIN events w ON w.user_id=su0.user_id AND w.type='workout_completed'
+        AND julianday(w.timestamp)-julianday(su0.signup_t) BETWEEN 0 AND 2
+    ) cohort
+    LEFT JOIN nsm_users ON nsm_users.user_id = cohort.user_id
+  `).get({ from: FROM, to: ANCHOR }) as MR;
+
+  const mWeek1 = db.prepare(`
+    WITH ${NSM_USERS_CTE}
+    SELECT
+      SUM(CASE WHEN nsm_users.user_id IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+      COUNT(*) AS total
+    FROM (
+      SELECT su0.user_id FROM (
+        SELECT user_id, MIN(timestamp) AS signup_t FROM events
+        WHERE type='sign_up' AND timestamp>=@from AND timestamp<=@to
+        GROUP BY user_id
+      ) su0
+      JOIN events w ON w.user_id=su0.user_id AND w.type='workout_completed'
+        AND julianday(w.timestamp)-julianday(su0.signup_t) BETWEEN 0 AND 7
+      GROUP BY su0.user_id HAVING COUNT(*)>=2
+    ) cohort
+    LEFT JOIN nsm_users ON nsm_users.user_id = cohort.user_id
+  `).get({ from: FROM, to: ANCHOR }) as MR;
+
+  return {
+    rate48h:   m48h.total   > 0 ? m48h.activated   / m48h.total   : 0,
+    rateWeek1: mWeek1.total > 0 ? mWeek1.activated / mWeek1.total : 0,
+  };
+}
+
 export function GET() {
   const rows = db.prepare(`
     SELECT
@@ -107,6 +165,8 @@ export function GET() {
     if (row.variant === 'treatment') samples[row.exp_id].treatment = row.n * SCALE;
   }
 
+  const nsmMul = getNsmMultipliers();
+
   const result = EXPERIMENT_CONFIG.map(exp => {
     const s    = samples[exp.id] ?? { control: 500, treatment: 500 };
     const n_ctrl = s.control  || 500;
@@ -120,6 +180,15 @@ export function GET() {
     const lift = Math.round(
       ((exp.treatment.conv_rate - exp.control.conv_rate) / exp.control.conv_rate) * 1000
     ) / 10;
+
+    // Projected NSM lift: absolute activation lift × NSM conversion rate for that metric
+    const absDelta = exp.treatment.conv_rate - exp.control.conv_rate;
+    let projectedNsmLift: number | null = null;
+    if (exp.linkedMetric === '48h') {
+      projectedNsmLift = Math.round(absDelta * nsmMul.rate48h * 1000) / 10;
+    } else if (exp.linkedMetric === 'week1') {
+      projectedNsmLift = Math.round(absDelta * nsmMul.rateWeek1 * 1000) / 10;
+    }
 
     return {
       id:           exp.id,
@@ -147,6 +216,7 @@ export function GET() {
       z,
       significant,
       confidence,
+      projectedNsmLift,
     };
   });
 

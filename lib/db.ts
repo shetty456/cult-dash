@@ -63,6 +63,8 @@ function createDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_users_channel     ON users(channel);
     CREATE INDEX IF NOT EXISTS idx_users_plan        ON users(plan);
     CREATE INDEX IF NOT EXISTS idx_users_status      ON users(status);
+    CREATE INDEX IF NOT EXISTS idx_events_type_ts      ON events(type, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_events_type_user_ts ON events(type, user_id, timestamp);
   `);
 
   return db;

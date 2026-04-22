@@ -59,13 +59,23 @@ export async function GET(req: NextRequest) {
   const statsBase = combinedClause;
   const statsParams = combinedParams;
   const statsRow = db.prepare(`
+    WITH nsm_users AS (
+      SELECT DISTINCT user_id FROM (
+        SELECT user_id, strftime('%Y-W%W', timestamp) AS wk, COUNT(*) AS cnt
+        FROM events WHERE type = 'workout_completed'
+        GROUP BY user_id, wk
+        HAVING COUNT(*) >= 3
+      )
+    )
     SELECT
       COUNT(*) as total,
       SUM(CASE WHEN u.status = 'active'  THEN 1 ELSE 0 END) as active,
       SUM(CASE WHEN u.status = 'at-risk' THEN 1 ELSE 0 END) as atRisk,
       SUM(CASE WHEN u.status = 'churned' THEN 1 ELSE 0 END) as churned,
-      SUM(u.nsm_reached) as nsmReached
-    FROM users u ${statsBase}
+      SUM(CASE WHEN nsm_users.user_id IS NOT NULL THEN 1 ELSE 0 END) as nsmReached
+    FROM users u
+    LEFT JOIN nsm_users ON nsm_users.user_id = u.id
+    ${statsBase}
   `).get(statsParams) as { total: number; active: number; atRisk: number; churned: number; nsmReached: number };
 
   return jsonResponse({

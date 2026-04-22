@@ -18,7 +18,32 @@ const EarlyActivationCard   = dynamic(() => import('@/components/charts/EarlyAct
 const SparklineLarge        = dynamic(() => import('@/components/SparklineMini'),                { ssr: false, loading: () => <div className="h-full w-full" /> });
 
 function ChartSkel() {
-  return <div className="h-[300px] bg-[#1a1a1a] rounded-xl animate-pulse" />;
+  return <div className="h-[300px] rounded-xl shimmer" />;
+}
+
+function FeaturedCardSkel() {
+  return (
+    <div className="rounded-xl border border-[#2a2a2a] bg-[#161616] p-4 space-y-3 overflow-hidden">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full shimmer" />
+        <div className="h-3 w-28 rounded shimmer" />
+      </div>
+      <div className="h-9 w-24 rounded shimmer" />
+      <div className="h-3 w-16 rounded shimmer" />
+      <div className="h-20 w-full rounded shimmer mt-2" />
+    </div>
+  );
+}
+
+function SmallCardSkel() {
+  return (
+    <div className="rounded-xl border border-[#2a2a2a] bg-[#161616] p-4 space-y-3 overflow-hidden">
+      <div className="h-3 w-24 rounded shimmer" />
+      <div className="h-8 w-20 rounded shimmer" />
+      <div className="h-3 w-16 rounded shimmer" />
+      <div className="h-10 w-full rounded shimmer mt-1" />
+    </div>
+  );
 }
 
 interface KPI { value: number; prev: number; change: number; }
@@ -176,17 +201,18 @@ export default function OverviewPage() {
   });
 
   useEffect(() => {
+    setMetrics(null);
     const qs = new URLSearchParams(filters as Record<string, string>);
     Promise.all([
-      fetch(`/api/metrics?${qs}`).then(r => r.json()),
-      fetch(`/api/funnel?${qs}`).then(r => r.json()),
-      fetch(`/api/wau?${qs}`).then(r => r.json()),
-      fetch(`/api/nsm?${qs}`).then(r => r.json()),
-      fetch(`/api/revenue?${qs}`).then(r => r.json()),
-      fetch(`/api/early-activation?${qs}`).then(r => r.json()),
+      fetch(`/api/metrics?${qs}`).then(r => r.json()).catch(() => null),
+      fetch(`/api/funnel?${qs}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/wau?${qs}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/nsm?${qs}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/revenue?${qs}`).then(r => r.json()).catch(() => null),
+      fetch(`/api/early-activation?${qs}`).then(r => r.json()).catch(() => null),
     ]).then(([m, funnel, wauData, nsmData, revData, activation]) => {
       if (activation?.summary) setActivationSummary(activation.summary);
-      setMetrics(m);
+      if (m) setMetrics(m);
 
       const stages = Array.isArray(funnel) ? funnel : [];
       const trials = stages[2]?.count ?? 0;
@@ -222,39 +248,44 @@ export default function OverviewPage() {
           <span className="text-[10px] text-[#10b981]/50 font-semibold tracking-wide">North Star + Revenue</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <FeaturedGraphCard
-            id="nsm"
-            label="NSM Completers (3x/week)"
-            value={metrics ? fmtNum(metrics.nsm.value, 'number') : '—'}
-            subtext="≥3 workouts / week"
-            change={metrics?.nsm.change ?? 0}
-            changeLabel="vs prev week"
-            status={(metrics?.nsm.change ?? 0) >= 0 ? 'green' : 'yellow'}
-            sparkline={sparklines.nsm}
-            onClick={() => setModalCard('nsm')}
-          />
-          <FeaturedGraphCard
-            id="wau"
-            label="Weekly Active Users"
-            value={metrics ? fmtNum(metrics.wau.value, 'number') : '—'}
-            change={metrics?.wau.change ?? 0}
-            changeLabel="vs prev week"
-            status={(metrics?.wau.change ?? 0) >= 0 ? 'green' : 'yellow'}
-            sparkline={sparklines.wau}
-            onClick={() => setModalCard('wau')}
-          />
-          <FeaturedGraphCard
-            id="revenue"
-            label="MRR"
-            value={metrics ? fmtNum(metrics.mrr.value, 'rupees') : '—'}
-            change={metrics?.mrr.change ?? 0}
-            changeLabel="vs prev month"
-            status={(metrics?.mrr.change ?? 0) >= 0 ? 'green' : 'yellow'}
-            sparkline={sparklines.revenue}
-            onClick={() => setModalCard('revenue')}
-          />
-        </div>
+        {metrics === null
+          ? <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FeaturedCardSkel /><FeaturedCardSkel /><FeaturedCardSkel />
+            </div>
+          : <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FeaturedGraphCard
+                id="nsm"
+                label="NSM Completers (3x/week)"
+                value={fmtNum(metrics.nsm.value, 'number')}
+                subtext="≥3 workouts / week"
+                change={metrics.nsm.change}
+                changeLabel="vs prev week"
+                status={metrics.nsm.change >= 0 ? 'green' : 'yellow'}
+                sparkline={sparklines.nsm}
+                onClick={() => setModalCard('nsm')}
+              />
+              <FeaturedGraphCard
+                id="wau"
+                label="Weekly Active Users"
+                value={fmtNum(metrics.wau.value, 'number')}
+                change={metrics.wau.change}
+                changeLabel="vs prev week"
+                status={metrics.wau.change >= 0 ? 'green' : 'yellow'}
+                sparkline={sparklines.wau}
+                onClick={() => setModalCard('wau')}
+              />
+              <FeaturedGraphCard
+                id="revenue"
+                label="MRR"
+                value={fmtNum(metrics.mrr.value, 'rupees')}
+                change={metrics.mrr.change}
+                changeLabel="vs prev month"
+                status={metrics.mrr.change >= 0 ? 'green' : 'yellow'}
+                sparkline={sparklines.revenue}
+                onClick={() => setModalCard('revenue')}
+              />
+            </div>
+        }
       </section>
 
       {/* ── Acquisition Efficiency ── */}
@@ -265,32 +296,35 @@ export default function OverviewPage() {
           <div className="flex-1 h-px bg-[#60a5fa]/15" />
           <span className="text-[10px] text-[#60a5fa]/50 font-semibold tracking-wide">CAC + Funnel</span>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-        <MetricCardV2
-          id="cac"
-          label="Blended CAC"
-          value={metrics ? fmtNum(metrics.cac.value, 'rupees') : '—'}
-          subtext={metrics ? (metrics.cac.value > 750 ? '⚠ Above ₹750 target' : '✓ Within target') : undefined}
-          change={metrics?.cac.change ?? 0}
-          changeLabel="vs prev month"
-          status={metrics ? (metrics.cac.value > 750 ? 'red' : 'green') : 'green'}
-          sparkline={sparklines.cac}
-          isActive={false}
-          invertChange
-          onClick={() => setModalCard('cac')}
-        />
-        <MetricCardV2
-          id="conversion"
-          label="Trial → Paid Conv."
-          value={convRate > 0 ? fmtNum(convRate, 'pct') : '—'}
-          change={convChange}
-          changeLabel="vs prev week"
-          status={convRate >= 20 ? 'green' : convRate >= 15 ? 'yellow' : 'red'}
-          sparkline={sparklines.conversion}
-          isActive={false}
-          onClick={() => setModalCard('conversion')}
-        />
-        </div>
+        {metrics === null
+          ? <div className="grid grid-cols-2 gap-3"><SmallCardSkel /><SmallCardSkel /></div>
+          : <div className="grid grid-cols-2 gap-3">
+            <MetricCardV2
+              id="cac"
+              label="Blended CAC"
+              value={fmtNum(metrics.cac.value, 'rupees')}
+              subtext={metrics.cac.value > 750 ? '⚠ Above ₹750 target' : '✓ Within target'}
+              change={metrics.cac.change}
+              changeLabel="vs prev month"
+              status={metrics.cac.value > 750 ? 'red' : 'green'}
+              sparkline={sparklines.cac}
+              isActive={false}
+              invertChange
+              onClick={() => setModalCard('cac')}
+            />
+            <MetricCardV2
+              id="conversion"
+              label="Trial → Paid Conv."
+              value={convRate > 0 ? fmtNum(convRate, 'pct') : '—'}
+              change={convChange}
+              changeLabel="vs prev week"
+              status={convRate >= 20 ? 'green' : convRate >= 15 ? 'yellow' : 'red'}
+              sparkline={sparklines.conversion}
+              isActive={false}
+              onClick={() => setModalCard('conversion')}
+            />
+          </div>
+        }
       </section>
 
       {/* ── Early Activation Signals ── */}
