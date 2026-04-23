@@ -63,9 +63,9 @@ const DEFINITIONS = [
     assumption: 'Weekly bucket = ISO calendar week. A user counts once even if they hit 3x in multiple weeks.',
   },
   {
-    tier: 'Habit (3x × 4wk)',
+    tier: 'NSM-Quality (≥3 wk × 4wks)',
     color: '#10b981',
-    def: '≥3 workout_completed events in each of ≥4 distinct weeks within a fixed 28-day lookback from the "to" date.',
+    def: '≥3 workout_completed events in each of ≥4 distinct weeks within a fixed 28-day lookback from the "to" date. This is the sustained-habit proxy for NSM.',
     assumption: 'Always uses a 28-day rolling window (not the filter range) — habit formation requires 4 full weeks regardless of the selected period.',
   },
 ];
@@ -75,6 +75,7 @@ const COST_NOTE = 'Cost per tier = total channel spend (all-time CAC rate × tot
 export default function CACBreakdownChart({ filters }: { filters: GlobalFilters }) {
   const [byChannel, setByChannel] = useState<ChannelRow[]>([]);
   const [trend, setTrend]         = useState<TrendRow[]>([]);
+  const [trendLabel, setTrendLabel] = useState<string>('');
   const [loading, setLoading]     = useState(true);
 
   const filterKey = JSON.stringify(filters);
@@ -87,6 +88,7 @@ export default function CACBreakdownChart({ filters }: { filters: GlobalFilters 
       .then(d => {
         setByChannel(d.byChannel ?? []);
         setTrend(d.trend ?? []);
+        setTrendLabel(d.trendLabel ?? '');
         setLoading(false);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,15 +111,15 @@ export default function CACBreakdownChart({ filters }: { filters: GlobalFilters 
   const bestHabit   = habitSorted[0];
   const worstHabit  = habitSorted[habitSorted.length - 1];
   const insight     = bestHabit && worstHabit
-    ? `${bestHabit.channel} produces habit users at ${fmtRupee(bestHabit.costPerHabit!)} — most efficient. ${worstHabit.channel} costs ${fmtRupee(worstHabit.costPerHabit!)} per habit user — ${Math.round(((worstHabit.costPerHabit! - bestHabit.costPerHabit!) / bestHabit.costPerHabit!) * 100)}% more.`
-    : 'Insufficient data to compare habit user costs across channels.';
+    ? `Shift spend to ${bestHabit.channel} → NSM-quality users at ${fmtRupee(bestHabit.costPerHabit!)} (most efficient). ${worstHabit.channel} costs ${fmtRupee(worstHabit.costPerHabit!)} per NSM-quality user — ${Math.round(((worstHabit.costPerHabit! - bestHabit.costPerHabit!) / bestHabit.costPerHabit!) * 100)}% more expensive.`
+    : 'Insufficient data to compare NSM-quality user costs across channels.';
 
   // Prepare chart data — one row per channel, three cost columns
   const chartData = byChannel.map(c => ({
-    channel:          c.channel,
-    'Cost / Activated':   c.costPerActivated ?? 0,
-    'Cost / Engaged':     c.costPerEngaged   ?? 0,
-    'Cost / Habit':       c.costPerHabit     ?? 0,
+    channel:             c.channel,
+    'Cost / Activated':  c.costPerActivated ?? 0,
+    'Cost / Engaged':    c.costPerEngaged   ?? 0,
+    'Cost / NSM-Quality': c.costPerHabit    ?? 0,
   }));
 
   return (
@@ -164,14 +166,15 @@ export default function CACBreakdownChart({ filters }: { filters: GlobalFilters 
               <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
               <Bar dataKey="Cost / Activated" fill="#60a5fa" radius={[3, 3, 0, 0]} isAnimationActive={false} />
               <Bar dataKey="Cost / Engaged"   fill="#f59e0b" radius={[3, 3, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="Cost / Habit"     fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="Cost / NSM-Quality" fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* CAC trend */}
         <div className="lg:col-span-2">
-          <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-3">Blended CAC trend (₹)</p>
+          <p className="text-xs font-semibold text-[#6b7280] uppercase tracking-wider mb-1">Blended CAC trend (₹)</p>
+          {trendLabel && <p className="text-[10px] text-[#4b5563] italic mb-3">{trendLabel}</p>}
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
@@ -199,7 +202,7 @@ export default function CACBreakdownChart({ filters }: { filters: GlobalFilters 
               <th className="text-right py-2 px-3 text-[#4b5563] font-semibold uppercase tracking-wider">Users</th>
               <th className="text-right py-2 px-3 text-[#60a5fa] font-semibold uppercase tracking-wider">Activated</th>
               <th className="text-right py-2 px-3 text-[#f59e0b] font-semibold uppercase tracking-wider">Engaged</th>
-              <th className="text-right py-2 px-3 text-[#10b981] font-semibold uppercase tracking-wider">Habit</th>
+              <th className="text-right py-2 px-3 text-[#10b981] font-semibold uppercase tracking-wider">NSM-Quality</th>
             </tr>
           </thead>
           <tbody>

@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, Cell, LabelList, Legend,
 } from 'recharts';
 import { GlobalFilters } from '@/lib/queryHelpers';
+import { CHANNEL_COLORS } from '@/lib/channelColors';
 
 interface FunnelRow { stage: string; count: number; pct: number; dropPct: number; }
 interface NsmBridge {
@@ -24,15 +25,11 @@ interface AcquisitionData {
   nsmBridge:   NsmBridge;
   insight:     string;
 }
-
-const CH_COLOR: Record<string, string> = {
-  'Paid Digital': '#818cf8', 'Organic': '#34d399',
-  'Referrals':    '#f59e0b', 'Brand/ATL': '#f472b6', 'Corporate': '#38bdf8',
-};
 const CH_LABEL: Record<string, string> = {
   'Paid Digital': 'Paid Digital', 'Organic': 'Organic',
   'Referrals': 'Referrals', 'Brand/ATL': 'Brand/ATL', 'Corporate': 'Corporate',
 };
+const CH_COLOR = CHANNEL_COLORS;
 
 function fmt(n: number) {
   if (n >= 10000000) return `${(n / 10000000).toFixed(1)}Cr`;
@@ -140,7 +137,7 @@ function NsmBridgePanel({ b, signups, paid }: { b: NsmBridge; signups: number; p
         <div className="bg-[#111] border border-[#10b981]/30 rounded-lg px-3 py-2.5">
           <p className="text-[9px] text-[#6b7280] uppercase tracking-wide mb-1">MRR uplift (30% conv.)</p>
           <p className="text-lg font-bold text-[#10b981]">{fmtMrr(b.upsellMrrOpportunity)}/mo</p>
-          <p className="text-[9px] text-[#4b5563]">if 30% of free NSM convert</p>
+          <p className="text-[9px] text-[#4b5563]">30% conv. × ₹600 avg/month</p>
         </div>
       </div>
     </div>
@@ -209,9 +206,9 @@ export default function AcquisitionFunnelCard({ filters }: { filters: GlobalFilt
           <p className="text-[9px] text-[#4b5563] mt-0.5">overall conversion</p>
         </div>
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-center">
-          <p className="text-[9px] text-[#6b7280] uppercase tracking-wider mb-1">Trial → Paid</p>
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wider mb-1">Trial Booked → Paid</p>
           <p className="text-2xl font-bold text-[#818cf8]">{trialToPaid}%</p>
-          <p className="text-[9px] text-[#4b5563] mt-0.5">post-trial conversion</p>
+          <p className="text-[9px] text-[#4b5563] mt-0.5">trial_booked → subscription_purchased</p>
         </div>
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-3 text-center">
           <p className="text-[9px] text-[#6b7280] uppercase tracking-wider mb-1">Biggest Leak</p>

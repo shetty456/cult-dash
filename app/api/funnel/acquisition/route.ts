@@ -87,26 +87,34 @@ function weightedCac(channels?: string[]): number {
   return total > 0 ? Math.round(weighted / total) : 750;
 }
 
-function autoInsight(overall: FunnelRow[], digital: FunnelRow[], physical: FunnelRow[]): string {
-  // Biggest absolute drop in the funnel
+interface NsmBridgeData { nsmPaid: number; paidAmongNsm: number; }
+
+function autoInsight(overall: FunnelRow[], digital: FunnelRow[], physical: FunnelRow[], nsm?: NsmBridgeData): string {
   const leak = [...overall].filter(s => s.dropPct > 0).sort((a, b) => b.dropPct - a.dropPct)[0];
-  // Trial → Paid comparison across channels
   const dConv = digital[4].count  / Math.max(1, digital[2].count)  * 100;
   const pConv = physical[4].count / Math.max(1, physical[2].count) * 100;
+
+  const paidTotal = overall[4]?.count ?? 0;
+  const nsmPerHundredPaid = nsm && paidTotal > 0
+    ? Math.round((nsm.nsmPaid / paidTotal) * 100)
+    : null;
+  const nsmSuffix = nsmPerHundredPaid !== null
+    ? ` Every 100 paid subs → ~${nsmPerHundredPaid} NSM completers (${nsmPerHundredPaid}% of paid hit 3x/week).`
+    : '';
 
   if (Math.abs(dConv - pConv) > 5) {
     const better = dConv > pConv ? 'Digital' : 'Physical';
     const hi = Math.max(dConv, pConv).toFixed(0);
     const lo = Math.min(dConv, pConv).toFixed(0);
-    return `${better} converts ${hi}% of trials to paid vs ${lo}% — scale ${better.toLowerCase()} spend to grow paid subs fastest.`;
+    return `Scale ${better.toLowerCase()} spend → it converts ${hi}% of trials to paid vs ${lo}% for the other channel.${nsmSuffix}`;
   }
   if (leak) {
     const idx    = overall.indexOf(leak);
     const prev   = overall[idx - 1]?.count ?? 0;
     const uplift = Math.round(prev * Math.max(0, leak.dropPct - 15) / 100 * 0.3);
-    return `Biggest drop at "${leak.stage}" (${leak.dropPct}% lost). Recovering 15 pp adds ~${uplift.toLocaleString()} paid subs.`;
+    return `Fix "${leak.stage}" (${leak.dropPct}% drop) first — recovering 15 pp adds ~${uplift.toLocaleString()} paid subs.${nsmSuffix}`;
   }
-  return 'Funnel conversion looks healthy across all stages.';
+  return `Funnel conversion looks healthy across all stages.${nsmSuffix}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -177,6 +185,6 @@ export async function GET(req: NextRequest) {
     cacByChannel, costPerPaidSub,
     industryBenchmarks: INDUSTRY,
     nsmBridge,
-    insight: autoInsight(overall, digital, physical),
+    insight: autoInsight(overall, digital, physical, { nsmPaid: nsmPaidCount, paidAmongNsm: nsmBridge.paidAmongNsm }),
   });
 }

@@ -66,6 +66,11 @@ function Shell({ children }: { children: React.ReactNode }) {
 
         <div className="flex-1 overflow-y-auto">
           {children}
+          <div className="px-4 sm:px-6 py-3 border-t border-[#1a1a1a]">
+            <p className="text-[10px] text-[#3a3a3a]">
+              Counts shown are scaled (sample DB × 25 ≈ 100K users). Not for external reporting.
+            </p>
+          </div>
         </div>
       </main>
 

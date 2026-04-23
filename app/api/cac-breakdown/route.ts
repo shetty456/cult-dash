@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { parseFilters, jsonResponse } from '@/lib/queryHelpers';
+import { CHANNEL_COLORS } from '@/lib/channelColors';
 
 const ANCHOR = '2026-04-17T23:59:59Z';
 
@@ -10,13 +11,6 @@ const CHANNEL_CAC: Record<string, number> = {
   'Referrals':    680,
   'Brand/ATL':    890,
   'Corporate':    560,
-};
-const CHANNEL_COLORS: Record<string, string> = {
-  'Paid Digital': '#ef4444',
-  'Organic':      '#4ade80',
-  'Referrals':    '#10b981',
-  'Brand/ATL':    '#f59e0b',
-  'Corporate':    '#60a5fa',
 };
 const MONTH_LABELS = ['Oct','Nov','Dec','Jan','Feb','Mar'];
 
@@ -115,5 +109,5 @@ export async function GET(req: NextRequest) {
     organic: 390 + i * 5  + (i * 7)  % 20,
   }));
 
-  return jsonResponse({ byChannel, trend });
+  return jsonResponse({ byChannel, trend, trendLabel: 'Modelled — Oct 2025 – Mar 2026' });
 }
